@@ -129,48 +129,77 @@
         footer a { color: var(--gold); text-decoration: none; transition: color 0.2s; }
         footer a:hover { color: var(--sky-mid); }
         
+        /* COLLAPSIBLE (ACCORDION) STYLES */
+        .card-header-toggle { cursor: pointer; user-select: none; justify-content: space-between; transition: background-color 0.2s ease; }
+        .card-header-toggle:hover { background: linear-gradient(to right, #fdf4e7, #ffffff); }
+        .toggle-icon { width: 32px; height: 32px; background: rgba(201,137,58,.1); border-radius: 50%; display: grid; place-items: center; color: var(--sky-deep); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease; }
+        .card-header-toggle:hover .toggle-icon { background: rgba(201,137,58,.25); }
+        .card.is-collapsed .toggle-icon { transform: rotate(-90deg); }
+        .card.collapsible .card-body-wrap { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease; opacity: 1; }
+        .card.collapsible.is-collapsed .card-body-wrap { grid-template-rows: 0fr; opacity: 0; }
+        .card.collapsible .card-body-inner { overflow: hidden; }
+
         /* =======================================================
-           TAMBAHAN SENIOR DEV: COLLAPSIBLE (ACCORDION) STYLES
-           Menggunakan teknik CSS Grid Transition untuk kehalusan 
+           PANEL WAKTU & TANGGAL LIVE 
         ======================================================== */
-        .card-header-toggle {
+        .live-panel {
+            margin: 20px auto 0;
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            background: rgba(13, 33, 55, 0.35); 
+            border: 1px solid rgba(201, 137, 58, 0.3);
+            border-radius: 16px;
+            padding: 14px 28px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            position: relative;
+            z-index: 1;
+        }
+        .lp-date {
+            text-align: left;
+            border-right: 1px solid rgba(255,255,255,0.15);
+            padding-right: 20px;
+        }
+        .lp-masehi { font-size: .95rem; font-weight: 600; color: var(--white); letter-spacing: 0.02em;}
+        .lp-hijri { font-size: .95rem; color: var(--gold-light); font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 0.03em; margin-top: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);}
+        .lp-time {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .lp-clock {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--white);
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            min-width: 145px;
+            text-align: center;
+        }
+        .lp-select {
+            background: rgba(201, 137, 58, 0.15);
+            border: 1px solid rgba(201, 137, 58, 0.6);
+            color: var(--gold-pale);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-size: .8rem;
+            font-weight: 700;
             cursor: pointer;
-            user-select: none;
-            justify-content: space-between;
-            transition: background-color 0.2s ease;
+            outline: none;
+            transition: all 0.2s ease;
         }
-        .card-header-toggle:hover {
-            background: linear-gradient(to right, #fdf4e7, #ffffff);
-        }
-        .toggle-icon {
-            width: 32px;
-            height: 32px;
-            background: rgba(201,137,58,.1);
-            border-radius: 50%;
-            display: grid;
-            place-items: center;
-            color: var(--sky-deep);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease;
-        }
-        .card-header-toggle:hover .toggle-icon {
-            background: rgba(201,137,58,.25);
-        }
-        .card.is-collapsed .toggle-icon {
-            transform: rotate(-90deg); /* Icon Chevron menghadap kanan saat ditutup */
-        }
-        /* Teknik CSS Grid untuk transisi buka-tutup halus */
-        .card.collapsible .card-body-wrap {
-            display: grid;
-            grid-template-rows: 1fr;
-            transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
-            opacity: 1;
-        }
-        .card.collapsible.is-collapsed .card-body-wrap {
-            grid-template-rows: 0fr;
-            opacity: 0;
-        }
-        .card.collapsible .card-body-inner {
-            overflow: hidden;
+        .lp-select:hover { background: rgba(201, 137, 58, 0.35); border-color: var(--gold-light); }
+        .lp-select option { background: var(--sky-deep); color: var(--white); }
+
+        @media(max-width: 650px) {
+            .live-panel { flex-direction: column; gap: 14px; padding: 18px; }
+            .lp-date { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.15); padding-right: 0; padding-bottom: 14px; text-align: center; }
+            .lp-clock { min-width: 130px; }
         }
         /* ======================================================= */
 
@@ -193,6 +222,23 @@
         <h2>OLEH : M. SHOLEH BAKHRUDDIN</h2>
         <p>Jean Meeus (1998)</p>
         <div class="badge">بِسْمِ ٱللَّٰهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ</div>
+
+        <br>
+        <div class="live-panel">
+            <div class="lp-date">
+                <div class="lp-masehi" id="lp_masehi">Memuat...</div>
+                <div class="lp-hijri" id="lp_hijri">Memuat...</div>
+            </div>
+            <div class="lp-time">
+                <div class="lp-clock" id="lp_clock">00:00:00</div>
+                <select class="lp-select" id="lp_tz" onchange="updateLiveDateTime()" title="Pilih Zona Waktu">
+                    <option value="7">WIB</option>
+                    <option value="8">WITA</option>
+                    <option value="9">WIT</option>
+                    <option value="WIS">WIS</option>
+                </select>
+            </div>
+        </div>
     </header>
 
     <div class="container">
@@ -572,14 +618,101 @@
             );
         }
 
-        // =======================================================
-        // TAMBAHAN FUNGSI JS UNTUK TOGGLE ACCORDION CARD
-        // =======================================================
         function toggleCard(headerElement) {
-            // Mencari elemen induk (.card) terdekat dan mengganti class .is-collapsed
             const card = headerElement.closest('.card');
             card.classList.toggle('is-collapsed');
         }
+
+        // =======================================================
+        // UPDATE JAM & TANGGAL LIVE (DENGAN NAMA HIJRIYAH CUSTOM)
+        // =======================================================
+        function updateLiveDateTime() {
+            const now = new Date();
+            
+            // 1. Hitung Hari dan Pasaran
+            const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const hari = hariArr[now.getDay()];
+            
+            const t1 = Date.UTC(2024, 4, 28);
+            const t2 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+            const diffDays = Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
+            const pasaranArr = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'];
+            const pasaran = pasaranArr[((diffDays % 5) + 5) % 5];
+            
+            const optionsMasehi = { day: 'numeric', month: 'long', year: 'numeric' };
+            const masehiStr = now.toLocaleDateString('id-ID', optionsMasehi);
+            
+            document.getElementById('lp_masehi').innerText = `${hari} ${pasaran}, ${masehiStr}`;
+            
+            // 2. KALENDER HIJRIYAH DENGAN NAMA BULAN CUSTOM (SESUAI PERMINTAAN)
+            try {
+                // Array nama bulan sesuai permintaan user
+                const bulanHijriyah = [
+                    "Muharam", "Safar", "Rabiulawal", "Rabiulakhir", 
+                    "Jumadilawal", "Jumadilakhir", "Rajab", "Syaban", 
+                    "Ramadan", "Syawal", "Zulkaidah", "Zulhijah"
+                ];
+
+                // Meminta Intl API untuk mengeluarkan angka tanggal, bulan, dan tahun saja
+                const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+                    day: 'numeric', month: 'numeric', year: 'numeric'
+                });
+                
+                // Mendapatkan komponen satu per satu secara akurat
+                const parts = formatter.formatToParts(now);
+                let d = '', m = '', y = '';
+                
+                for (let part of parts) {
+                    if (part.type === 'day') d = part.value;
+                    if (part.type === 'month') m = part.value;
+                    if (part.type === 'year') y = part.value;
+                }
+
+                // Mengonversi angka bulan (1-12) menjadi index array (0-11)
+                const monthIndex = parseInt(m) - 1;
+                const namaBulan = bulanHijriyah[monthIndex] || m; 
+                
+                // Merapikan output tahun jika terbawa string khusus
+                const cleanYear = y.replace(/[^0-9]/g, '');
+
+                // Menyusun string final
+                document.getElementById('lp_hijri').innerText = `${d} ${namaBulan} ${cleanYear} H`;
+            } catch (e) {
+                document.getElementById('lp_hijri').innerText = "Sistem Hijriyah tidak didukung";
+            }
+
+            // 3. Kalkulasi Jam Live
+            const tzSelection = document.getElementById('lp_tz').value;
+            let timeStr = "";
+
+            if (tzSelection === "WIS") {
+                const yr = now.getFullYear();
+                const mo = now.getMonth() + 1;
+                const dy = now.getDate();
+                const hUTC = now.getUTCHours() + now.getUTCMinutes()/60 + now.getUTCSeconds()/3600;
+                
+                const JD = julianDate(yr, mo, dy, hUTC);
+                const sun = sunPosition(JD);
+                
+                const od = parseFloat(document.getElementById('lon_d').value) || 0;
+                const om = parseFloat(document.getElementById('lon_m').value) || 0;
+                const os = parseFloat(document.getElementById('lon_s').value) || 0;
+                const lon = dmsToDecimal(od, om, os);
+
+                let wisHours = hUTC + (lon / 15) + (sun.EoT_min / 60);
+                wisHours = ((wisHours % 24) + 24) % 24;
+                timeStr = hms(wisHours);
+            } else {
+                const offset = parseInt(tzSelection);
+                const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+                const nd = new Date(utc + (3600000 * offset));
+                timeStr = pad(nd.getHours()) + ":" + pad(nd.getMinutes()) + ":" + pad(nd.getSeconds());
+            }
+
+            document.getElementById('lp_clock').innerText = timeStr;
+        }
+
+        setInterval(updateLiveDateTime, 1000);
         // =======================================================
 
         function hitungSholat() {
@@ -758,7 +891,6 @@
             const resultsEl = document.getElementById('results');
             resultsEl.style.display = 'block';
             
-            // Sedikit penyesuaian agar saat discroll, fokus tetap ke tabel utama (Waktu Sholat)
             setTimeout(() => {
                 document.querySelector('.result-meta').scrollIntoView({ behavior:'smooth', block:'start' });
             }, 50);
@@ -773,6 +905,7 @@
             document.getElementById('tgl_input').value = `${y}-${m}-${d}`;
             convertDMS();
             updateTZLabel();
+            updateLiveDateTime(); 
         })();
     </script>
 </body>
