@@ -630,54 +630,9 @@
         // =======================================================
         function updateLiveDateTime() {
             const now = new Date();
-            
-            // 1. Hitung Hari dan Pasaran
-            const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const hari = hariArr[now.getDay()];
-            
-            const t1 = Date.UTC(2024, 4, 28);
-            const t2 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
-            const diffDays = Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
-            const pasaranArr = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'];
-            const pasaran = pasaranArr[((diffDays % 5) + 5) % 5];
-            
-            const optionsMasehi = { day: 'numeric', month: 'long', year: 'numeric' };
-            const masehiStr = now.toLocaleDateString('id-ID', optionsMasehi);
-            
-            document.getElementById('lp_masehi').innerText = `${hari} ${pasaran}, ${masehiStr}`;
-            
-            // 2. KALENDER HIJRIYAH DENGAN NAMA BULAN CUSTOM (SESUAI PERMINTAAN)
-            try {
-                const bulanHijriyah = [
-                    "Muharam", "Safar", "Rabiulawal", "Rabiulakhir", 
-                    "Jumadilawal", "Jumadilakhir", "Rajab", "Syaban", 
-                    "Ramadan", "Syawal", "Zulkaidah", "Zulhijah"
-                ];
-
-                const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
-                    day: 'numeric', month: 'numeric', year: 'numeric'
-                });
-                
-                const parts = formatter.formatToParts(now);
-                let d = '', m = '', y = '';
-                
-                for (let part of parts) {
-                    if (part.type === 'day') d = part.value;
-                    if (part.type === 'month') m = part.value;
-                    if (part.type === 'year') y = part.value;
-                }
-
-                const monthIndex = parseInt(m) - 1;
-                const namaBulan = bulanHijriyah[monthIndex] || m; 
-                const cleanYear = y.replace(/[^0-9]/g, '');
-
-                document.getElementById('lp_hijri').innerText = `${d} ${namaBulan} ${cleanYear} H`;
-            } catch (e) {
-                document.getElementById('lp_hijri').innerText = "Sistem Hijriyah tidak didukung";
-            }
-
-            // 3. Kalkulasi Jam Live
             const tzSelection = document.getElementById('lp_tz').value;
+            
+            let targetDate = now;
             let timeStr = "";
 
             if (tzSelection === "WIS") {
@@ -697,14 +652,64 @@
                 let wisHours = hUTC + (lon / 15) + (sun.EoT_min / 60);
                 wisHours = ((wisHours % 24) + 24) % 24;
                 timeStr = hms(wisHours);
+
+                // Sinkronisasi penanggalan dinamis berbasis bujur geografis lokal (Waktu Istiwa')
+                const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+                targetDate = new Date(utc + (lon / 15) * 3600000);
             } else {
                 const offset = parseInt(tzSelection);
                 const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-                const nd = new Date(utc + (3600000 * offset));
-                timeStr = pad(nd.getHours()) + ":" + pad(nd.getMinutes()) + ":" + pad(nd.getSeconds());
+                targetDate = new Date(utc + (3600000 * offset));
+                timeStr = pad(targetDate.getHours()) + ":" + pad(targetDate.getMinutes()) + ":" + pad(targetDate.getSeconds());
             }
 
             document.getElementById('lp_clock').innerText = timeStr;
+            
+            // 1. Hitung Hari dan Pasaran Berdasarkan Target Date (Zona Waktu Terpilih)
+            const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const hari = hariArr[targetDate.getDay()];
+            
+            // PERBAIKAN SENIOR: Menggunakan Jan 1, 1970 (Kamis Wage) sebagai Absolute Epoch baseline Unix global
+            const t1 = Date.UTC(1970, 0, 1);
+            const t2 = Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+            const diffDays = Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
+            const pasaranArr = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'];
+            const pasaran = pasaranArr[((diffDays % 5) + 5) % 5];
+            
+            const optionsMasehi = { day: 'numeric', month: 'long', year: 'numeric' };
+            const masehiStr = targetDate.toLocaleDateString('id-ID', optionsMasehi);
+            
+            document.getElementById('lp_masehi').innerText = `${hari} ${pasaran}, ${masehiStr}`;
+            
+            // 2. KALENDER HIJRIYAH DENGAN NAMA BULAN CUSTOM
+            try {
+                const bulanHijriyah = [
+                    "Muharam", "Safar", "Rabiulawal", "Rabiulakhir", 
+                    "Jumadilawal", "Jumadilakhir", "Rajab", "Syaban", 
+                    "Ramadan", "Syawal", "Zulkaidah", "Zulhijah"
+                ];
+
+                const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+                    day: 'numeric', month: 'numeric', year: 'numeric'
+                });
+                
+                const parts = formatter.formatToParts(targetDate);
+                let d = '', m = '', y = '';
+                
+                for (let part of parts) {
+                    if (part.type === 'day') d = part.value;
+                    if (part.type === 'month') m = part.value;
+                    if (part.type === 'year') y = part.value;
+                }
+
+                const monthIndex = parseInt(m) - 1;
+                const namaBulan = bulanHijriyah[monthIndex] || m; 
+                const cleanYear = y.replace(/[^0-9]/g, '');
+
+                document.getElementById('lp_hijri').innerText = `${d} ${namaBulan} ${cleanYear} H`;
+            } catch (e) {
+                document.getElementById('lp_hijri').innerText = "Sistem Hijriyah tidak didukung";
+            }
         }
 
         setInterval(updateLiveDateTime, 1000);
