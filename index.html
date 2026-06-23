@@ -33,6 +33,12 @@
         .masthead p { font-size: .85rem; color: rgba(255,255,255,.7); font-weight: 300; position: relative; z-index: 1; margin-bottom: 8px;}
         .badge { display: inline-block; margin-top: 12px; background: rgba(201,137,58,.2); border: 1px solid rgba(201,137,58,.5); color: var(--gold-pale); font-size: .75rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; padding: 6px 16px; border-radius: 30px; position: relative; z-index: 1; backdrop-filter: blur(4px); box-shadow: var(--shadow-glow); }
         
+        /* AYAT PANEL */
+        .ayat-card { background: var(--white); border: 1px solid var(--border); border-left: 4px solid var(--gold); border-radius: var(--radius); padding: 20px; margin-bottom: 24px; box-shadow: var(--shadow-sm); text-align: center; }
+        .ayat-ar { font-family: 'Amiri', serif; font-size: 1.4rem; color: var(--sky-deep); margin-bottom: 10px; line-height: 2; direction: rtl; }
+        .ayat-id { font-size: 0.85rem; color: var(--ink-soft); font-style: italic; }
+        .ayat-ref { font-size: 0.78rem; color: var(--gold); font-weight: 700; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
         /* LAYOUT */
         .container { max-width: 980px; margin: 0 auto; padding: 0 16px; position: relative; top: -25px; z-index: 2;}
         .card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); overflow: hidden; margin: 0 0 28px 0; transition: transform 0.3s ease, box-shadow 0.3s ease; }
@@ -242,6 +248,13 @@
     </header>
 
     <div class="container">
+        
+        <div class="ayat-card">
+            <div class="ayat-ar">أَقِمِ ٱلصَّلَوٰةَ لِدُلُوكِ ٱلشَّمْسِ إِلَىٰ غَسَقِ ٱلَّيْلِ وَقُرْءَانَ ٱلْفَجْرِ ۖ إِنَّ قُرْءَانَ ٱلْفَجْرِ كَانَ مَشْهُودًا</div>
+            <div class="ayat-id">"Dirikanlah shalat dari sesudah matahari tergelincir sampai gelap malam dan (dirikanlah pula shalat) subuh. Sesungguhnya shalat subuh itu disaksikan (oleh malaikat)."</div>
+            <div class="ayat-ref">QS. Al-Isra' : 78</div>
+        </div>
+
         <div class="card">
             <div class="card-head">
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -315,8 +328,6 @@
                                     <th>Waktu Daerah<span class="th-sub">Standard Time</span></th>
                                     <th>Waktu LMT<span class="th-sub">Local Mean Time</span></th>
                                     <th>Waktu WIS<span class="th-sub">Istiwa / True Solar</span></th>
-                                    <th>Sudut Jam H<span class="th-sub">Hour Angle (°)</span></th>
-                                    <th>Elevasi Matahari<span class="th-sub">Altitude (°)</span></th>
                                 </tr>
                             </thead>
                             <tbody id="prayer_tbody"></tbody>
@@ -328,6 +339,41 @@
                         <strong>LMT</strong>: Local Mean Time = STD + (λ_lokal − λ_meridian) × 4 menit/°. &nbsp;|&nbsp; 
                         <strong>WIS / Istiwa'</strong>: True Solar Time = LMT + EoT. Waktu berdasarkan posisi nyata matahari; saat transit selalu 12:00:00. <br><br>
                         <strong>Kriteria Sudut:</strong> Imsak: Subuh − 10 Menit · Subuh −20° · Syuruk/Maghrib −1° (termasuk refraksi &amp; semidiameter) · Dhuha +4.5° · Ashar: arctan(1/(1+tan|φ−δ|)) [Syafi'i, faktor=1] · Isya −18° — sesuai <em>KEMENAG RI</em>.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card collapsible is-collapsed">
+                <div class="card-head card-header-toggle" onclick="toggleCard(this)" title="Klik untuk Luaskan/Sembunyikan">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="icon">🧭</div>
+                        <h2>Sudut Jam (H) &amp; Elevasi Matahari</h2>
+                    </div>
+                    <div class="toggle-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                </div>
+                <div class="card-body-wrap">
+                    <div class="card-body-inner">
+                        <div class="card-body">
+                            <div class="tbl-wrap">
+                                <table class="interp-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align:left">Nama Waktu</th>
+                                            <th style="text-align:center">Kriteria Elevasi (h)</th>
+                                            <th style="text-align:right">Sudut Jam H (Decimal Degree)</th>
+                                            <th style="text-align:right">Sudut Jam H (Satuan Waktu)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ha_alt_tbody"></tbody>
+                                </table>
+                            </div>
+                            <br>
+                            <div class="legend">
+                                <strong>Catatan Astronomis:</strong> Nilai Sudut Jam ($H$) dikonversi ke satuan waktu dengan basis $15^\circ = 1\text{ jam}$. Nilai negatif atau positif menentukan posisi objek pra-transit (timur) atau pasca-transit (barat), namun dalam komputasi awal durasi diekspresikan dalam nilai absolut interval simetris terhadap titik kulminasi atas ($12:00\text{ WIS}$).
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -496,8 +542,6 @@
 
         function asharAltitude(lat, dec, factor = 1) {
             const za_noon = Math.abs(lat - dec); 
-            // Perbaikan Senior: atan(1 / (factor + tan(za_noon))) secara langsung menghasilkan ELEVASI matahari,
-            // bukan Sudut Zenit. Menghapus logika "90 -" mengembalikan kalkulasi ke nilai elevasi riil yang tepat.
             return atanD(1 / (factor + tanD(za_noon)));
         }
 
@@ -625,9 +669,6 @@
             card.classList.toggle('is-collapsed');
         }
 
-        // =======================================================
-        // UPDATE JAM & TANGGAL LIVE (DENGAN NAMA HIJRIYAH CUSTOM)
-        // =======================================================
         function updateLiveDateTime() {
             const now = new Date();
             const tzSelection = document.getElementById('lp_tz').value;
@@ -653,7 +694,6 @@
                 wisHours = ((wisHours % 24) + 24) % 24;
                 timeStr = hms(wisHours);
 
-                // Sinkronisasi penanggalan dinamis berbasis bujur geografis lokal (Waktu Istiwa')
                 const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
                 targetDate = new Date(utc + (lon / 15) * 3600000);
             } else {
@@ -665,11 +705,9 @@
 
             document.getElementById('lp_clock').innerText = timeStr;
             
-            // 1. Hitung Hari dan Pasaran Berdasarkan Target Date (Zona Waktu Terpilih)
             const hariArr = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
             const hari = hariArr[targetDate.getDay()];
             
-            // PERBAIKAN SENIOR: Menggunakan Jan 1, 1970 (Kamis Wage) sebagai Absolute Epoch baseline Unix global
             const t1 = Date.UTC(1970, 0, 1);
             const t2 = Date.UTC(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
             const diffDays = Math.floor((t2 - t1) / (1000 * 60 * 60 * 24));
@@ -681,7 +719,6 @@
             
             document.getElementById('lp_masehi').innerText = `${hari} ${pasaran}, ${masehiStr}`;
             
-            // 2. KALENDER HIJRIYAH DENGAN NAMA BULAN CUSTOM
             try {
                 const bulanHijriyah = [
                     "Muharam", "Safar", "Rabiulawal", "Rabiulakhir", 
@@ -713,7 +750,6 @@
         }
 
         setInterval(updateLiveDateTime, 1000);
-        // =======================================================
 
         function hitungSholat() {
             const ld = parseFloat(document.getElementById('lat_d').value) || 0;
@@ -749,8 +785,6 @@
             const deltaLon = lon - meridianStd;
             const JD = julianDate(yr, mo, dy, 0);
 
-            // Optimasi Senior: Kalkulasi posisi matahari tepat pada estimasi waktu transit lokal (True Noon)
-            // alih-alih menggunakan nilai statis 12:00 UT, demi memaksimalkan presisi deklinasi & perata waktu.
             const approxTransitUT = (12.0 - tzRaw) / 24.0;
             const sun = sunPosition(JD + approxTransitUT);
             const { Dec, EoT_min } = sun;
@@ -784,14 +818,25 @@
             const tbody = document.getElementById('prayer_tbody');
             tbody.innerHTML = '';
 
+            const haAltTbody = document.getElementById('ha_alt_tbody');
+            haAltTbody.innerHTML = '';
+
             prayerDefs.forEach(p => {
                 let t;
                 if (p.name.startsWith('Dzuhur')) {
                     t = tDzuhur;
                 } else if (p.H === null) {
-                    tbody.innerHTML += `<tr>
+                    const fallbackRow = `<tr>
                         <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
-                        <td colspan="5" style="text-align:center;color:var(--ink-muted);font-size:.8rem">Tidak dapat dihitung (kutub / matahari tidak terbit/tenggelam)</td>
+                        <td colspan="3" style="text-align:center;color:var(--ink-muted);font-size:.8rem">Tidak dapat dihitung (kutub / matahari tidak terbit/tenggelam)</td>
+                    </tr>`;
+                    tbody.innerHTML += fallbackRow;
+                    
+                    haAltTbody.innerHTML += `<tr>
+                        <td style="font-weight:700; color:var(--ink)">${p.name}</td>
+                        <td style="text-align:center; font-family:'JetBrains Mono',monospace; color:var(--ink-muted)">—</td>
+                        <td class="mono-cell">—</td>
+                        <td class="mono-cell" style="color:var(--ink-muted)">—</td>
                     </tr>`;
                     return;
                 } else {
@@ -803,16 +848,25 @@
                 let t_adj = { ...t };
                 t_adj.std += (ihtiyathMin / 60);
 
-                const ha_str = p.H !== null && p.H > 0 ? p.H.toFixed(4) + '°' : '0.0000°';
-                const alt_str = p.altDeg !== undefined ? p.altDeg.toFixed(4) + '°' : '—';
-
+                // Render tabel utama waktu sholat tanpa Sudut Jam H dan Elevasi Matahari
                 tbody.innerHTML += `<tr>
                     <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
                     <td class="time-std">${hms(t_adj.std)}</td>
                     <td class="time-lmt">${hms(t_adj.lmt)}</td>
                     <td class="time-wis">${hms(t_adj.wis)}</td>
-                    <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--ink-muted)">${ha_str}</td>
-                    <td style="text-align:center;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--ink-muted)">${alt_str}</td>
+                </tr>`;
+
+                // Logika Rendering Eksklusif ke dalam Panel Collapsible (Sudut Jam & Elevasi)
+                const p_before_check = p.before !== undefined ? p.before : false;
+                const preciseHaDeg = p.H !== null && p.H > 0 ? (p_before_check ? -p.H : p.H).toFixed(6) + '°' : '0.000000°';
+                const preciseHaTime = p.H !== null && p.H > 0 ? (p_before_check ? -(p.H / 15) : (p.H / 15)).toFixed(6) + ' jam' : '0.000000 jam';
+                const preciseAlt = p.altDeg !== undefined ? p.altDeg.toFixed(4) + '°' : '—';
+
+                haAltTbody.innerHTML += `<tr>
+                    <td style="font-weight:700; color:var(--ink)">${p.name} <span style="font-family:'Amiri'; font-weight:normal; font-size:1rem; color:var(--ink-muted); margin-left:6px;">${p.ar}</span></td>
+                    <td style="text-align:center; font-family:'JetBrains Mono',monospace; color:var(--sky-mid); font-weight:600">${preciseAlt}</td>
+                    <td class="mono-cell" style="color:var(--gold)">${preciseHaDeg}</td>
+                    <td class="mono-cell" style="color:var(--ink-soft)">${preciseHaTime}</td>
                 </tr>`;
             });
 
