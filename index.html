@@ -402,6 +402,7 @@
         const tanD = x => Math.tan(x * DEG);
         const asinD = x => Math.asin(x) * RAD;
         const acosD = x => Math.acos(x) * RAD;
+        const atanD = x => Math.atan(x) * RAD;
         const atan2D= (y,x) => Math.atan2(y,x) * RAD;
 
         function norm360(a) {
@@ -495,8 +496,9 @@
 
         function asharAltitude(lat, dec, factor = 1) {
             const za_noon = Math.abs(lat - dec); 
-            const za_ashar = Math.atan(1 / (factor + tanD(za_noon))) * RAD;
-            return 90 - za_ashar; 
+            // Perbaikan Senior: atan(1 / (factor + tan(za_noon))) secara langsung menghasilkan ELEVASI matahari,
+            // bukan Sudut Zenit. Menghapus logika "90 -" mengembalikan kalkulasi ke nilai elevasi riil yang tepat.
+            return atanD(1 / (factor + tanD(za_noon)));
         }
 
         function convertDMS() {
@@ -646,19 +648,16 @@
             
             // 2. KALENDER HIJRIYAH DENGAN NAMA BULAN CUSTOM (SESUAI PERMINTAAN)
             try {
-                // Array nama bulan sesuai permintaan user
                 const bulanHijriyah = [
                     "Muharam", "Safar", "Rabiulawal", "Rabiulakhir", 
                     "Jumadilawal", "Jumadilakhir", "Rajab", "Syaban", 
                     "Ramadan", "Syawal", "Zulkaidah", "Zulhijah"
                 ];
 
-                // Meminta Intl API untuk mengeluarkan angka tanggal, bulan, dan tahun saja
                 const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
                     day: 'numeric', month: 'numeric', year: 'numeric'
                 });
                 
-                // Mendapatkan komponen satu per satu secara akurat
                 const parts = formatter.formatToParts(now);
                 let d = '', m = '', y = '';
                 
@@ -668,14 +667,10 @@
                     if (part.type === 'year') y = part.value;
                 }
 
-                // Mengonversi angka bulan (1-12) menjadi index array (0-11)
                 const monthIndex = parseInt(m) - 1;
                 const namaBulan = bulanHijriyah[monthIndex] || m; 
-                
-                // Merapikan output tahun jika terbawa string khusus
                 const cleanYear = y.replace(/[^0-9]/g, '');
 
-                // Menyusun string final
                 document.getElementById('lp_hijri').innerText = `${d} ${namaBulan} ${cleanYear} H`;
             } catch (e) {
                 document.getElementById('lp_hijri').innerText = "Sistem Hijriyah tidak didukung";
@@ -748,7 +743,11 @@
             const meridianStd = TZ * 15;
             const deltaLon = lon - meridianStd;
             const JD = julianDate(yr, mo, dy, 0);
-            const sun = sunPosition(JD + 0.5);
+
+            // Optimasi Senior: Kalkulasi posisi matahari tepat pada estimasi waktu transit lokal (True Noon)
+            // alih-alih menggunakan nilai statis 12:00 UT, demi memaksimalkan presisi deklinasi & perata waktu.
+            const approxTransitUT = (12.0 - tzRaw) / 24.0;
+            const sun = sunPosition(JD + approxTransitUT);
             const { Dec, EoT_min } = sun;
 
             function wisToAll(wis) {
