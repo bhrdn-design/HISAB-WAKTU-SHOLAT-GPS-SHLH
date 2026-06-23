@@ -145,9 +145,7 @@
         .card.collapsible.is-collapsed .card-body-wrap { grid-template-rows: 0fr; opacity: 0; }
         .card.collapsible .card-body-inner { overflow: hidden; }
 
-        /* =======================================================
-           PANEL WAKTU & TANGGAL LIVE 
-        ======================================================== */
+        /* PANEL WAKTU & TANGGAL LIVE */
         .live-panel {
             margin: 20px auto 0;
             display: inline-flex;
@@ -199,15 +197,14 @@
             outline: none;
             transition: all 0.2s ease;
         }
-        .lp-select:hover { background: rgba(201, 137, 58, 0.35); border-color: var(--gold-light); }
         .lp-select option { background: var(--sky-deep); color: var(--white); }
+        .lp-select:hover { background: rgba(201, 137, 58, 0.35); border-color: var(--gold-light); }
 
         @media(max-width: 650px) {
             .live-panel { flex-direction: column; gap: 14px; padding: 18px; }
             .lp-date { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.15); padding-right: 0; padding-bottom: 14px; text-align: center; }
             .lp-clock { min-width: 130px; }
         }
-        /* ======================================================= */
 
         @media(max-width: 600px) {
             .masthead h1 { font-size: 1.4rem; }
@@ -317,7 +314,7 @@
             <div class="card">
                 <div class="card-head">
                     <div class="icon">🕌</div>
-                    <h2>Waktu Sholat</h2>
+                    <h2>Waktu Sholat Harian</h2>
                 </div>
                 <div class="card-body">
                     <div class="tbl-wrap">
@@ -339,6 +336,42 @@
                         <strong>LMT</strong>: Local Mean Time = STD + (λ_lokal − λ_meridian) × 4 menit/°. &nbsp;|&nbsp; 
                         <strong>WIS / Istiwa'</strong>: True Solar Time = LMT + EoT. Waktu berdasarkan posisi nyata matahari; saat transit selalu 12:00:00. <br><br>
                         <strong>Kriteria Sudut:</strong> Imsak: Subuh − 10 Menit · Subuh −20° · Syuruk/Maghrib −1° (termasuk refraksi &amp; semidiameter) · Dhuha +4.5° · Ashar: arctan(1/(1+tan|φ−δ|)) [Syafi'i, faktor=1] · Isya −18° — sesuai <em>KEMENAG RI</em>.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-head" style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="icon">📅</div>
+                        <h2 id="monthly_title">Waktu Sholat Dalam Sebulan</h2>
+                    </div>
+                    <select id="monthly_time_type" class="lp-select" onchange="renderMonthlyTable()" title="Pilih Format Tampilan Waktu Bulanan">
+                        <option value="std">Format: Waktu Daerah (STD)</option>
+                        <option value="lmt">Format: Waktu LMT</option>
+                        <option value="wis">Format: Waktu WIS (Istiwa')</option>
+                    </select>
+                </div>
+                <div class="card-body">
+                    <div class="tbl-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Tanggal</th>
+                                    <th>Hari &amp; Pasaran</th>
+                                    <th>Imsak</th>
+                                    <th>Subuh</th>
+                                    <th>Syuruk</th>
+                                    <th>Dhuha</th>
+                                    <th>Dzuhur</th>
+                                    <th>Ashar</th>
+                                    <th>Maghrib</th>
+                                    <th>Isya</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthly_tbody"></tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -455,13 +488,16 @@
             return ((a % 360) + 360) % 360;
         }
 
+        // FORMATTER JAM: Memperbaiki sistem pembulatan rollover dari detik ke menit/jam
         function hms(h) {
             if (h === null || isNaN(h)) return '—:——:——';
             h = ((h % 24) + 24) % 24;
-            const hh = Math.floor(h);
-            const mm = Math.floor((h - hh) * 60);
-            let ss = Math.round(((h - hh) * 60 - mm) * 60);
-            if (ss >= 60) { ss = 0; }
+            let totalSecs = Math.round(h * 3600);
+            if (totalSecs >= 86400) totalSecs -= 86400;
+            
+            const hh = Math.floor(totalSecs / 3600);
+            const mm = Math.floor((totalSecs % 3600) / 60);
+            const ss = totalSecs % 60;
             return `${pad(hh)}:${pad(mm)}:${pad(ss)}`;
         }
 
@@ -484,10 +520,12 @@
         }
 
         function julianDate(year, month, day, UT = 0) {
-            if (month <= 2) { year -= 1; month += 12; }
-            const A = Math.floor(year / 100);
+            let y = year;
+            let m = month;
+            if (m <= 2) { y -= 1; m += 12; }
+            const A = Math.floor(y / 100);
             const B = 2 - A + Math.floor(A / 4);
-            return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5 + UT / 24;
+            return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + B - 1524.5 + UT / 24;
         }
 
         function sunPosition(JD) {
@@ -543,6 +581,69 @@
         function asharAltitude(lat, dec, factor = 1) {
             const za_noon = Math.abs(lat - dec); 
             return atanD(1 / (factor + tanD(za_noon)));
+        }
+
+        // ENGINES: Fungsi modular mandiri untuk menghitung data harian komparatif astronomi
+        function calculateDayPrayerTimes(yr, mo, dy, lat, lon, TZ, ihtiyathMin) {
+            const JD = julianDate(yr, mo, dy, 0);
+            const approxTransitUT = (12.0 - TZ) / 24.0;
+            const sun = sunPosition(JD + approxTransitUT);
+            const Dec = sun.Dec;
+            const EoT_min = sun.EoT_min;
+
+            const meridianStd = TZ * 15;
+            const deltaLon = lon - meridianStd;
+
+            function wisToAll(wis) {
+                const lmt = wis - EoT_min / 60;
+                const std = lmt - deltaLon / 15;
+                return { wis, lmt, std };
+            }
+
+            const H_fajr = hourAngle(-20.0, lat, Dec);
+            const H_syuruk = hourAngle(-1.0, lat, Dec);
+            const H_dhuha = hourAngle(4.5, lat, Dec); 
+            const alt_ashar = asharAltitude(lat, Dec, 1);
+            const H_ashar = hourAngle(alt_ashar, lat, Dec);
+            const H_maghrib = hourAngle(-1.0, lat, Dec);
+            const H_isha = hourAngle(-18.0, lat, Dec);
+
+            const prayers = {};
+            const prayerDefs = [
+                { name: 'imsak', H: H_fajr, before: true, offsetMin: -10 },
+                { name: 'subuh', H: H_fajr, before: true, offsetMin: 0 },
+                { name: 'syuruk', H: H_syuruk, before: true, offsetMin: 0 },
+                { name: 'dhuha', H: H_dhuha, before: true, offsetMin: 0 },
+                { name: 'dzuhur', H: 0, before: false, isTransit: true },
+                { name: 'ashar', H: H_ashar, before: false, offsetMin: 0 },
+                { name: 'maghrib', H: H_maghrib, before: false, offsetMin: 0 },
+                { name: 'isya', H: H_isha, before: false, offsetMin: 0 }
+            ];
+
+            prayerDefs.forEach(p => {
+                let t;
+                if (p.isTransit) {
+                    t = wisToAll(12.0);
+                } else if (p.H === null) {
+                    t = null;
+                } else {
+                    const wis = p.before ? 12.0 - p.H / 15.0 : 12.0 + p.H / 15.0;
+                    const finalWis = wis + (p.offsetMin ? p.offsetMin / 60.0 : 0);
+                    t = wisToAll(finalWis);
+                }
+
+                if (t) {
+                    prayers[p.name] = {
+                        wis: t.wis,
+                        lmt: t.lmt,
+                        std: t.std + (ihtiyathMin / 60.0)
+                    };
+                } else {
+                    prayers[p.name] = null;
+                }
+            });
+
+            return { prayers, sun, H_fajr, H_syuruk, H_dhuha, H_ashar, H_maghrib, H_isha, alt_ashar, JD };
         }
 
         function convertDMS() {
@@ -751,6 +852,36 @@
 
         setInterval(updateLiveDateTime, 1000);
 
+        window.calculatedMonthlyData = [];
+
+        function renderMonthlyTable() {
+            const viewType = document.getElementById('monthly_time_type').value; 
+            const tbody = document.getElementById('monthly_tbody');
+            if (!tbody || window.calculatedMonthlyData.length === 0) return;
+
+            tbody.innerHTML = window.calculatedMonthlyData.map(row => {
+                const formatCell = (prayerTimeObj) => {
+                    if (!prayerTimeObj) return '—';
+                    return hms(prayerTimeObj[viewType]);
+                };
+                
+                return `<tr>
+                    <td style="text-align: center; font-weight: 700; color: var(--ink-soft);">${row.no}</td>
+                    <td style="text-align: center; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; white-space: nowrap;">${row.tanggal}</td>
+                    <td style="font-weight: 500; white-space: nowrap; font-size: 0.85rem;">${row.hariPasaran}</td>
+                    <td class="time-std" style="color: #34495e;">${formatCell(row.times.imsak)}</td>
+                    <td class="time-std" style="color: #7c5cbf;">${formatCell(row.times.subuh)}</td>
+                    <td class="time-std" style="color: #3498db; font-weight: 500;">${formatCell(row.times.syuruk)}</td>
+                    <td class="time-std" style="color: #f1c40f; font-weight: 500;">${formatCell(row.times.dhuha)}</td>
+                    <td class="time-std" style="color: var(--gold);">${formatCell(row.times.dzuhur)}</td>
+                    <td class="time-std" style="color: #e67e22;">${formatCell(row.times.ashar)}</td>
+                    <td class="time-std" style="color: #e74c3c;">${formatCell(row.times.maghrib)}</td>
+                    <td class="time-std" style="color: #2c3e50;">${formatCell(row.times.isya)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // PERBAIKAN UTAMA: Manajemen data komputasi dinamis berbasis fungsi modular instansiasi harian
         function hitungSholat() {
             const ld = parseFloat(document.getElementById('lat_d').value) || 0;
             const lm = parseFloat(document.getElementById('lat_m').value) || 0;
@@ -764,7 +895,6 @@
 
             const place = document.getElementById('place_name').value || '—';
             const dateStr = document.getElementById('tgl_input').value;
-            
             const ihtiyathMin = parseFloat(document.getElementById('ihtiyath_input').value) || 0;
 
             if (!dateStr) {
@@ -783,84 +913,66 @@
 
             const meridianStd = TZ * 15;
             const deltaLon = lon - meridianStd;
-            const JD = julianDate(yr, mo, dy, 0);
 
-            const approxTransitUT = (12.0 - tzRaw) / 24.0;
-            const sun = sunPosition(JD + approxTransitUT);
-            const { Dec, EoT_min } = sun;
+            // Eksekusi kalkulasi hari tunggal utama
+            const dayRes = calculateDayPrayerTimes(yr, mo, dy, lat, lon, TZ, ihtiyathMin);
+            const prayers = dayRes.prayers;
+            const sun = dayRes.sun;
+            const Dec = sun.Dec;
+            const EoT_min = sun.EoT_min;
+            const JD = dayRes.JD;
 
-            function wisToAll(wis) {
-                const lmt = wis - EoT_min / 60;
-                const std = lmt - deltaLon / 15;
-                return { wis, lmt, std };
-            }
-
-            const tDzuhur = wisToAll(12.0);
-            const H_fajr = hourAngle(-20.0, lat, Dec);
-            const H_syuruk = hourAngle(-1.0, lat, Dec);
-            const H_dhuha = hourAngle(4.5, lat, Dec); 
-            const alt_ashar = asharAltitude(lat, Dec, 1);
-            const H_ashar = hourAngle(alt_ashar, lat, Dec);
-            const H_maghrib = hourAngle(-1.0, lat, Dec);
-            const H_isha = hourAngle(-18.0, lat, Dec);
-
+            // Render Output Tabel Harian Utama
             const prayerDefs = [
-                { name:'Imsak', ar:'الإمساك', dot:'dot-imsak', H:H_fajr, before:true, altDeg:-20.0, offsetMin:-10 },
-                { name:'Subuh (Fajr)', ar:'الفجر', dot:'dot-fajr', H:H_fajr, before:true, altDeg:-20.0 },
-                { name:'Syuruk (Terbit)',ar:'الشروق', dot:'dot-syuruk', H:H_syuruk, before:true, altDeg:-1.0 },
-                { name:'Dhuha', ar:'الضحى', dot:'dot-dhuha', H:H_dhuha, before:true, altDeg:4.5 },
-                { name:'Dzuhur (Dhuhr)',ar:'الظهر', dot:'dot-dhuhr', H:0, before:false, altDeg:90-Math.abs(lat-Dec) },
-                { name:"Ashar ('Asr)", ar:'العصر', dot:'dot-asr', H:H_ashar, before:false, altDeg:alt_ashar },
-                { name:'Maghrib', ar:'المغرب', dot:'dot-maghrib', H:H_maghrib, before:false, altDeg:-1.0 },
-                { name:"Isya (Isha')", ar:'العشاء', dot:'dot-isha', H:H_isha, before:false, altDeg:-18.0 },
+                { id: 'imsak', name: 'Imsak', ar: 'الإمساك', dot: 'dot-imsak' },
+                { id: 'subuh', name: 'Subuh (Fajr)', ar: 'الفجر', dot: 'dot-fajr' },
+                { id: 'syuruk', name: 'Syuruk (Terbit)', ar: 'الشروق', dot: 'dot-syuruk' },
+                { id: 'dhuha', name: 'Dhuha', ar: 'الضحى', dot: 'dot-dhuha' },
+                { id: 'dzuhur', name: 'Dzuhur (Dhuhr)', ar: 'الظهر', dot: 'dot-dhuhr' },
+                { id: 'ashar', name: "Ashar ('Asr)", ar: 'العصر', dot: 'dot-asr' },
+                { id: 'maghrib', name: 'Maghrib', ar: 'المغرب', dot: 'dot-maghrib' },
+                { id: 'isya', name: "Isya (Isha')", ar: 'العشاء', dot: 'dot-isha' }
             ];
 
             const tbody = document.getElementById('prayer_tbody');
             tbody.innerHTML = '';
 
-            const haAltTbody = document.getElementById('ha_alt_tbody');
-            haAltTbody.innerHTML = '';
-
             prayerDefs.forEach(p => {
-                let t;
-                if (p.name.startsWith('Dzuhur')) {
-                    t = tDzuhur;
-                } else if (p.H === null) {
-                    const fallbackRow = `<tr>
+                const t = prayers[p.id];
+                if (!t) {
+                    tbody.innerHTML += `<tr>
                         <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
                         <td colspan="3" style="text-align:center;color:var(--ink-muted);font-size:.8rem">Tidak dapat dihitung (kutub / matahari tidak terbit/tenggelam)</td>
                     </tr>`;
-                    tbody.innerHTML += fallbackRow;
-                    
-                    haAltTbody.innerHTML += `<tr>
-                        <td style="font-weight:700; color:var(--ink)">${p.name}</td>
-                        <td style="text-align:center; font-family:'JetBrains Mono',monospace; color:var(--ink-muted)">—</td>
-                        <td class="mono-cell">—</td>
-                        <td class="mono-cell" style="color:var(--ink-muted)">—</td>
-                    </tr>`;
-                    return;
                 } else {
-                    const wis = p.before ? 12 - p.H / 15 : 12 + p.H / 15;
-                    const finalWis = wis + (p.offsetMin ? p.offsetMin / 60 : 0);
-                    t = wisToAll(finalWis);
+                    tbody.innerHTML += `<tr>
+                        <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
+                        <td class="time-std">${hms(t.std)}</td>
+                        <td class="time-lmt">${hms(t.lmt)}</td>
+                        <td class="time-wis">${hms(t.wis)}</td>
+                    </tr>`;
                 }
+            });
 
-                let t_adj = { ...t };
-                t_adj.std += (ihtiyathMin / 60);
+            // Render Output Sudut Jam H & Elevasi Matahari
+            const haAltTbody = document.getElementById('ha_alt_tbody');
+            haAltTbody.innerHTML = '';
 
-                // Render tabel utama waktu sholat tanpa Sudut Jam H dan Elevasi Matahari
-                tbody.innerHTML += `<tr>
-                    <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
-                    <td class="time-std">${hms(t_adj.std)}</td>
-                    <td class="time-lmt">${hms(t_adj.lmt)}</td>
-                    <td class="time-wis">${hms(t_adj.wis)}</td>
-                </tr>`;
+            const haDefs = [
+                { name: 'Imsak', ar: 'الإمساك', H: dayRes.H_fajr, before: true, alt: -20.0 },
+                { name: 'Subuh (Fajr)', ar: 'الفجر', H: dayRes.H_fajr, before: true, alt: -20.0 },
+                { name: 'Syuruk (Terbit)', ar: 'الشروق', H: dayRes.H_syuruk, before: true, alt: -1.0 },
+                { name: 'Dhuha', ar: 'الضحى', H: dayRes.H_dhuha, before: true, alt: 4.5 },
+                { name: 'Dzuhur (Dhuhr)', ar: 'الظهر', H: 0, before: false, alt: 90 - Math.abs(lat - Dec) },
+                { name: "Ashar ('Asr)", ar: 'العصر', H: dayRes.H_ashar, before: false, alt: dayRes.alt_ashar },
+                { name: 'Maghrib', ar: 'المغرب', H: dayRes.H_maghrib, before: false, alt: -1.0 },
+                { name: "Isya (Isha')", ar: 'العشاء', H: dayRes.H_isha, before: false, alt: -18.0 }
+            ];
 
-                // Logika Rendering Eksklusif ke dalam Panel Collapsible (Sudut Jam & Elevasi)
-                const p_before_check = p.before !== undefined ? p.before : false;
-                const preciseHaDeg = p.H !== null && p.H > 0 ? (p_before_check ? -p.H : p.H).toFixed(6) + '°' : '0.000000°';
-                const preciseHaTime = p.H !== null && p.H > 0 ? (p_before_check ? -(p.H / 15) : (p.H / 15)).toFixed(6) + ' jam' : '0.000000 jam';
-                const preciseAlt = p.altDeg !== undefined ? p.altDeg.toFixed(4) + '°' : '—';
+            haDefs.forEach(p => {
+                const preciseAlt = p.alt !== null ? p.alt.toFixed(4) + '°' : '—';
+                const preciseHaDeg = p.H !== null ? (p.before && p.H > 0 ? -p.H : p.H).toFixed(6) + '°' : '0.000000°';
+                const preciseHaTime = p.H !== null ? (p.before && p.H > 0 ? -(p.H / 15) : (p.H / 15)).toFixed(6) + ' jam' : '0.000000 jam';
 
                 haAltTbody.innerHTML += `<tr>
                     <td style="font-weight:700; color:var(--ink)">${p.name} <span style="font-family:'Amiri'; font-weight:normal; font-size:1rem; color:var(--ink-muted); margin-left:6px;">${p.ar}</span></td>
@@ -870,6 +982,7 @@
                 </tr>`;
             });
 
+            // Render Output Meta Info Box
             const dateObj = new Date(yr, mo - 1, dy);
             const dateDisp = dateObj.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
@@ -884,7 +997,10 @@
 
             const eotSign = EoT_min >= 0 ? '+' : '';
             const dLsign = deltaLon >= 0 ? '+' : '';
+            const tDzuhurStd = prayers['dzuhur'] ? prayers['dzuhur'].std : null;
+            const tDzuhurLmt = prayers['dzuhur'] ? prayers['dzuhur'].lmt : null;
 
+            // Render Output Grid Astronomi
             document.getElementById('astro_grid').innerHTML = `
                 <div class="astro-card"><div class="ac-label">Julian Date</div><div class="ac-value" style="font-size:.82rem">${(JD+0.5).toFixed(5)}</div><div class="ac-unit">T = ${sun.T.toFixed(8)} abad</div></div>
                 <div class="astro-card"><div class="ac-label">Deklinasi δ</div><div class="ac-value">${Dec.toFixed(6)}°</div><div class="ac-unit">${Dec >= 0 ? '↑ Utara Ekuator' : '↓ Selatan Ekuator'}</div><div class="ac-sub">${dmsStr(Dec)}</div></div>
@@ -895,11 +1011,12 @@
                 <div class="astro-card"><div class="ac-label">Asensio Rekta α</div><div class="ac-value">${sun.RA_norm.toFixed(5)}°</div><div class="ac-unit">Right Ascension</div><div class="ac-sub">${(sun.RA_norm / 15).toFixed(4)} jam</div></div>
                 <div class="astro-card"><div class="ac-label">Nutasi Δψ</div><div class="ac-value">${(sun.dPsi * 3600).toFixed(3)}″</div><div class="ac-unit">dalam bujur</div><div class="ac-sub">Ω = ${sun.Omega.toFixed(4)}°</div></div>
                 <div class="astro-card"><div class="ac-label">Selisih Bujur ΔLon</div><div class="ac-value">${dLsign}${deltaLon.toFixed(4)}°</div><div class="ac-unit">λ_lokal − λ_meridian</div><div class="ac-sub">${dLsign}${(deltaLon * 4).toFixed(3)} menit</div></div>
-                <div class="astro-card"><div class="ac-label">Dzuhur / Kulminasi</div><div class="ac-value">${hms(tDzuhur.std + ihtiyathMin/60)}</div><div class="ac-unit">${tzName}</div><div class="ac-sub">LMT ${hms(tDzuhur.lmt)} · WIS 12:00:00</div></div>
+                <div class="astro-card"><div class="ac-label">Dzuhur / Kulminasi</div><div class="ac-value">${hms(tDzuhurStd)}</div><div class="ac-unit">${tzName}</div><div class="ac-sub">LMT ${hms(tDzuhurLmt)} · WIS 12:00:00</div></div>
             `;
 
             document.getElementById('astro_legend').innerHTML = `<strong>L₀</strong>=${sun.L0.toFixed(4)}° &nbsp;|&nbsp; <strong>M</strong>=${sun.M.toFixed(4)}° &nbsp;|&nbsp; <strong>C</strong>=${sun.C.toFixed(4)}° &nbsp;|&nbsp; <strong>e</strong>=${sun.e.toFixed(8)} &nbsp;|&nbsp; <strong>Ω</strong>=${sun.Omega.toFixed(4)}° &nbsp;|&nbsp; <strong>Δψ</strong>=${(sun.dPsi*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>Δε</strong>=${(sun.dEps*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>Aberasi</strong>=${(sun.aberration*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>δ</strong>=${Dec.toFixed(6)}° &nbsp;|&nbsp; <strong>EoT</strong>=${eotSign}${EoT_min.toFixed(6)} menit`;
 
+            // Render Output Parameter Tabel Rincian Perhitungan
             const rows = [
                 ['Julian Date (JD)', 'JD', (JD+0.5).toFixed(8), 'Julian Day Number'],
                 ['Waktu Julian T', 'T', sun.T.toFixed(10), 'abad Julian sejak J2000.0'],
@@ -927,16 +1044,16 @@
                 ['Selisih Bujur', 'ΔLon = λ−λ₀', deltaLon.toFixed(6)+'°', 'derajat (positif → timur meridian)'],
                 ['Koreksi LMT', 'ΔLon×4', (deltaLon*4).toFixed(4)+' mnt', 'menit waktu (LMT vs STD)'],
                 ['Transit (Kulminasi) WIS', 'Dz_WIS', '12:00:00', 'Waktu Istiwa (by definition)'],
-                ['Transit LMT', 'Dz_LMT', hms(tDzuhur.lmt), 'Local Mean Time'],
-                ['Transit STD', 'Dz_STD', hms(tDzuhur.std + ihtiyathMin/60), tzName + ' (+ Ihtiyath)'],
+                ['Transit LMT', 'Dz_LMT', hms(tDzuhurLmt), 'Local Mean Time'],
+                ['Transit STD', 'Dz_STD', hms(tDzuhurStd), tzName + ' (+ Ihtiyath)'],
                 ['Waktu Ihtiyath (Pengaman)', 'Ihtiyath', ihtiyathMin + ' menit', 'Ditambahkan ke Waktu Daerah (STD)'],
                 ['Tinggi Kulminasi', 'alt_noon', (90 - Math.abs(lat-Dec)).toFixed(4)+'°', 'derajat di atas cakrawala'],
-                ['Elevasi Ashar (Syafi\'i)', 'alt_Asr', alt_ashar !== null ? alt_ashar.toFixed(4)+'°' : '—', 'faktor = 1'],
-                ['Sudut Jam Subuh', 'H_Fajr', H_fajr !== null ? H_fajr.toFixed(6)+'°' : '—', 'h = −20°'],
-                ['Sudut Jam Syuruk/Maghrib', 'H_Mghr', H_maghrib !== null ? H_maghrib.toFixed(6)+'°' : '—', 'h = −1°'],
-                ['Sudut Jam Dhuha', 'H_Dhuha', H_dhuha !== null ? H_dhuha.toFixed(6)+'°' : '—', 'h = +4.5°'],
-                ['Sudut Jam Ashar', 'H_Asr', H_ashar !== null ? H_ashar.toFixed(6)+'°' : '—', 'Syafi\'i faktor 1'],
-                ['Sudut Jam Isya', 'H_Isha', H_isha !== null ? H_isha.toFixed(6)+'°' : '—', 'h = −18°'],
+                ['Elevasi Ashar (Syafi\'i)', 'alt_Asr', dayRes.alt_ashar !== null ? dayRes.alt_ashar.toFixed(4)+'°' : '—', 'faktor = 1'],
+                ['Sudut Jam Subuh', 'H_Fajr', dayRes.H_fajr !== null ? dayRes.H_fajr.toFixed(6)+'°' : '—', 'h = −20°'],
+                ['Sudut Jam Syuruk/Maghrib', 'H_Mghr', dayRes.H_syuruk !== null ? dayRes.H_syuruk.toFixed(6)+'°' : '—', 'h = −1°'],
+                ['Sudut Jam Dhuha', 'H_Dhuha', dayRes.H_dhuha !== null ? dayRes.H_dhuha.toFixed(6)+'°' : '—', 'h = +4.5°'],
+                ['Sudut Jam Ashar', 'H_Asr', dayRes.H_ashar !== null ? dayRes.H_ashar.toFixed(6)+'°' : '—', 'Syafi\'i faktor 1'],
+                ['Sudut Jam Isya', 'H_Isha', dayRes.H_isha !== null ? dayRes.H_isha.toFixed(6)+'°' : '—', 'h = −18°'],
             ];
 
             document.getElementById('detail_tbody').innerHTML = rows.map(([p,s,v,u]) => `<tr>
@@ -945,6 +1062,39 @@
                 <td class="mono-cell">${v}</td>
                 <td style="color:var(--ink-muted);font-size:.75rem">${u}</td>
             </tr>`).join('');
+
+            // =========================================================================
+            // PERBAIKAN SEBULAN: Iterasi murni tanggal objek harian untuk fluktuasi riil
+            // =========================================================================
+            window.calculatedMonthlyData = [];
+            const totalDaysInMonth = new Date(yr, mo, 0).getDate();
+            const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            document.getElementById('monthly_title').innerText = `Waktu Sholat Sebulan — ${namaBulanIndo[mo-1]} ${yr}`;
+
+            for (let d = 1; d <= totalDaysInMonth; d++) {
+                // Mengeksekusi instansiasi fungsi internal harian untuk memperoleh fluktuasi Deklinasi & EoT yang tepat
+                const loopDayRes = calculateDayPrayerTimes(yr, mo, d, lat, lon, TZ, ihtiyathMin);
+
+                const currentLoopDate = new Date(yr, mo - 1, d);
+                const t1_l = Date.UTC(1970, 0, 1);
+                const t2_l = Date.UTC(yr, mo - 1, d);
+                const diffDays_l = Math.floor((t2_l - t1_l) / (1000 * 60 * 60 * 24));
+                
+                const pasaranArr_l = ['Wage', 'Kliwon', 'Legi', 'Pahing', 'Pon'];
+                const pasaran_l = pasaranArr_l[((diffDays_l % 5) + 5) % 5];
+                
+                const hariArr_l = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+                const hari_l = hariArr_l[currentLoopDate.getDay()];
+
+                window.calculatedMonthlyData.push({
+                    no: d,
+                    tanggal: `${pad(d)}/${pad(mo)}/${yr}`,
+                    hariPasaran: `${hari_l} ${pasaran_l}`,
+                    times: loopDayRes.prayers
+                });
+            }
+
+            renderMonthlyTable();
 
             const resultsEl = document.getElementById('results');
             resultsEl.style.display = 'block';
