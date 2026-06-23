@@ -129,6 +129,51 @@
         footer a { color: var(--gold); text-decoration: none; transition: color 0.2s; }
         footer a:hover { color: var(--sky-mid); }
         
+        /* =======================================================
+           TAMBAHAN SENIOR DEV: COLLAPSIBLE (ACCORDION) STYLES
+           Menggunakan teknik CSS Grid Transition untuk kehalusan 
+        ======================================================== */
+        .card-header-toggle {
+            cursor: pointer;
+            user-select: none;
+            justify-content: space-between;
+            transition: background-color 0.2s ease;
+        }
+        .card-header-toggle:hover {
+            background: linear-gradient(to right, #fdf4e7, #ffffff);
+        }
+        .toggle-icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(201,137,58,.1);
+            border-radius: 50%;
+            display: grid;
+            place-items: center;
+            color: var(--sky-deep);
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background 0.3s ease;
+        }
+        .card-header-toggle:hover .toggle-icon {
+            background: rgba(201,137,58,.25);
+        }
+        .card.is-collapsed .toggle-icon {
+            transform: rotate(-90deg); /* Icon Chevron menghadap kanan saat ditutup */
+        }
+        /* Teknik CSS Grid untuk transisi buka-tutup halus */
+        .card.collapsible .card-body-wrap {
+            display: grid;
+            grid-template-rows: 1fr;
+            transition: grid-template-rows 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+            opacity: 1;
+        }
+        .card.collapsible.is-collapsed .card-body-wrap {
+            grid-template-rows: 0fr;
+            opacity: 0;
+        }
+        .card.collapsible .card-body-inner {
+            overflow: hidden;
+        }
+        /* ======================================================= */
+
         @media(max-width: 600px) {
             .masthead h1 { font-size: 1.4rem; }
             .masthead-ar { font-size: 2.2rem; }
@@ -212,17 +257,6 @@
 
             <div class="card">
                 <div class="card-head">
-                    <div class="icon">🌞</div>
-                    <h2>Astronomi Matahari</h2>
-                </div>
-                <div class="card-body">
-                    <div class="astro-grid" id="astro_grid"></div>
-                    <div class="legend" id="astro_legend"></div>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-head">
                     <div class="icon">🕌</div>
                     <h2>Waktu Sholat</h2>
                 </div>
@@ -251,28 +285,58 @@
                     </div>
                 </div>
             </div>
-            
-            <div class="card">
-                <div class="card-head">
-                    <div class="icon">📐</div>
-                    <h2>Rincian Perhitungan</h2>
+
+            <div class="card collapsible is-collapsed">
+                <div class="card-head card-header-toggle" onclick="toggleCard(this)" title="Klik untuk Luaskan/Sembunyikan">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="icon">🌞</div>
+                        <h2>Astronomi Matahari</h2>
+                    </div>
+                    <div class="toggle-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="tbl-wrap">
-                        <table class="interp-table" id="detail_table">
-                            <thead>
-                                <tr>
-                                    <th style="text-align:left">Parameter</th>
-                                    <th style="text-align:center">Simbol</th>
-                                    <th style="text-align:right">Nilai</th>
-                                    <th style="text-align:left">Satuan / Keterangan</th>
-                                </tr>
-                            </thead>
-                            <tbody id="detail_tbody"></tbody>
-                        </table>
+                <div class="card-body-wrap">
+                    <div class="card-body-inner">
+                        <div class="card-body">
+                            <div class="astro-grid" id="astro_grid"></div>
+                            <div class="legend" id="astro_legend"></div>
+                        </div>
                     </div>
                 </div>
             </div>
+            
+            <div class="card collapsible is-collapsed">
+                <div class="card-head card-header-toggle" onclick="toggleCard(this)" title="Klik untuk Luaskan/Sembunyikan">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="icon">📐</div>
+                        <h2>Rincian Perhitungan</h2>
+                    </div>
+                    <div class="toggle-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                </div>
+                <div class="card-body-wrap">
+                    <div class="card-body-inner">
+                        <div class="card-body">
+                            <div class="tbl-wrap">
+                                <table class="interp-table" id="detail_table">
+                                    <thead>
+                                        <tr>
+                                            <th style="text-align:left">Parameter</th>
+                                            <th style="text-align:center">Simbol</th>
+                                            <th style="text-align:right">Nilai</th>
+                                            <th style="text-align:left">Satuan / Keterangan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detail_tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <footer>
@@ -412,18 +476,15 @@
             document.getElementById('tz_label').textContent = label;
         }
 
-        /* FUNGSI GPS YANG DIPERBARUI DENGAN TINGKAT AKURASI TINGGI & ANTI-GAGAL */
         function getLocation() {
             const btn = document.getElementById('btn_gps');
             const originalText = btn.innerHTML;
 
-            // 1. Pengecekan Dukungan Browser
             if (!navigator.geolocation) {
                 alert("Peramban (Browser) Anda tidak mendukung fitur Geolocation / GPS.");
                 return;
             }
 
-            // 2. Peringatan Koneksi Tidak Aman (HTTP)
             if (window.isSecureContext === false) {
                 alert("Peringatan: GPS mungkin diblokir oleh peramban karena Anda tidak mengakses halaman ini melalui koneksi aman (HTTPS).");
             }
@@ -431,34 +492,30 @@
             btn.innerHTML = '⏳ Menemukan lokasi...';
             btn.disabled = true;
 
-            // 3. Konfigurasi GPS Akurasi Tinggi
             const options = {
-                enableHighAccuracy: true, // Memaksa penggunaan chip GPS asli
-                timeout: 20000,           // Memberikan waktu hingga 20 detik untuk mengunci satelit
-                maximumAge: 0             // Mengabaikan cache agar mengambil lokasi yang paling baru
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 0
             };
 
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    const accuracy = position.coords.accuracy; // Tingkat akurasi satelit dalam satuan meter
+                    const accuracy = position.coords.accuracy;
 
-                    // Mengubah sistem desimal GPS ke sistem Derajat Menit Detik (DMS)
                     function formatToDms(dec) {
                         const isNeg = dec < 0;
                         const absDec = Math.abs(dec);
                         const d = Math.floor(absDec);
                         const m = Math.floor((absDec - d) * 60);
                         const s = (((absDec - d) * 60 - m) * 60).toFixed(2);
-                        // Menangani angka minus pada koordinat 0 derajat
                         return { d: (isNeg && d === 0) ? "-0" : (isNeg ? -d : d), m: m, s: parseFloat(s) };
                     }
 
                     const latDms = formatToDms(lat);
                     const lonDms = formatToDms(lon);
 
-                    // Memasukkan Hasil Kalkulasi DMS ke input form secara otomatis
                     document.getElementById('lat_d').value = latDms.d;
                     document.getElementById('lat_m').value = latDms.m;
                     document.getElementById('lat_s').value = latDms.s;
@@ -467,30 +524,26 @@
                     document.getElementById('lon_m').value = lonDms.m;
                     document.getElementById('lon_s').value = lonDms.s;
 
-                    convertDMS(); // Memicu update tampilan teks desimal di bawah input
+                    convertDMS();
 
-                    // 4. Deteksi Zona Waktu Otomatis (Cerdas) berdasarkan Bujur (Lon)
-                    let tzBujur = 7; // Secara bawaan diatur ke WIB
-                    if (lon >= 126) tzBujur = 9; // Area Timur (WIT)
-                    else if (lon >= 116) tzBujur = 8; // Area Tengah (WITA)
+                    let tzBujur = 7; 
+                    if (lon >= 126) tzBujur = 9; 
+                    else if (lon >= 116) tzBujur = 8; 
                     
                     document.getElementById('tz_input').value = tzBujur;
-                    updateTZLabel(); // Perbarui label zona waktu
+                    updateTZLabel();
 
-                    // 5. Pencarian Nama Kota dengan OpenStreetMap API (Reverse Geocoding)
                     try {
                         const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&accept-language=id`);
                         const data = await response.json();
                         
                         if (data && data.display_name) {
-                            // Format nama agar tidak terlalu panjang, disisipkan nilai akurasi meter
                             const addressParts = data.display_name.split(', ');
                             document.getElementById('place_name').value = addressParts.slice(0, 3).join(', ') + ` (Akurasi: ±${Math.round(accuracy)}m)`;
                         } else {
                             document.getElementById('place_name').value = `Lokasi GPS (Akurasi: ±${Math.round(accuracy)}m)`;
                         }
                     } catch (error) {
-                        // Jika fetch ke API Gagal karena jaringan atau limit, tetap tampilkan notifikasi berhasil dengan detail meternya.
                         console.error("Gagal mengambil nama lokasi dari server peta", error);
                         document.getElementById('place_name').value = `Lokasi GPS (Akurasi: ±${Math.round(accuracy)}m)`;
                     }
@@ -502,7 +555,6 @@
                     }, 3000);
                 },
                 (error) => {
-                    // 6. Penanganan Error Berlapis (Anti-Gagal Memberi Informasi)
                     let errorMessage = "Gagal melacak titik kordinat satelit.";
                     if (error.code === 1) {
                         errorMessage = "Akses lokasi DITOLAK. Silakan izinkan akses lokasi (GPS) pada peramban Anda untuk menggunakan fitur ini.";
@@ -519,6 +571,16 @@
                 options
             );
         }
+
+        // =======================================================
+        // TAMBAHAN FUNGSI JS UNTUK TOGGLE ACCORDION CARD
+        // =======================================================
+        function toggleCard(headerElement) {
+            // Mencari elemen induk (.card) terdekat dan mengganti class .is-collapsed
+            const card = headerElement.closest('.card');
+            card.classList.toggle('is-collapsed');
+        }
+        // =======================================================
 
         function hitungSholat() {
             const ld = parseFloat(document.getElementById('lat_d').value) || 0;
@@ -695,7 +757,11 @@
 
             const resultsEl = document.getElementById('results');
             resultsEl.style.display = 'block';
-            setTimeout(() => resultsEl.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+            
+            // Sedikit penyesuaian agar saat discroll, fokus tetap ke tabel utama (Waktu Sholat)
+            setTimeout(() => {
+                document.querySelector('.result-meta').scrollIntoView({ behavior:'smooth', block:'start' });
+            }, 50);
         }
 
         (function init() {
