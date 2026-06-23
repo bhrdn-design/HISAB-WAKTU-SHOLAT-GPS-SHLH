@@ -340,38 +340,47 @@
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-head" style="justify-content: space-between;">
+            <div class="card collapsible is-collapsed">
+                <div class="card-head card-header-toggle" onclick="toggleCard(this)" style="justify-content: space-between;" title="Klik untuk Luaskan/Sembunyikan">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <div class="icon">📅</div>
                         <h2 id="monthly_title">Waktu Sholat Dalam Sebulan</h2>
                     </div>
-                    <select id="monthly_time_type" class="lp-select" onchange="renderMonthlyTable()" title="Pilih Format Tampilan Waktu Bulanan">
-                        <option value="std">Format: Waktu Daerah (STD)</option>
-                        <option value="lmt">Format: Waktu LMT</option>
-                        <option value="wis">Format: Waktu WIS (Istiwa')</option>
-                    </select>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <select id="monthly_time_type" class="lp-select" onchange="renderMonthlyTable()" onclick="event.stopPropagation()" title="Pilih Format Tampilan Waktu Bulanan">
+                            <option value="std">Format: Waktu Daerah (STD)</option>
+                            <option value="lmt">Format: Waktu LMT</option>
+                            <option value="wis">Format: Waktu WIS (Istiwa')</option>
+                        </select>
+                        <div class="toggle-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="tbl-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>No</th>
-                                    <th>Tanggal</th>
-                                    <th>Hari &amp; Pasaran</th>
-                                    <th>Imsak</th>
-                                    <th>Subuh</th>
-                                    <th>Syuruk</th>
-                                    <th>Dhuha</th>
-                                    <th>Dzuhur</th>
-                                    <th>Ashar</th>
-                                    <th>Maghrib</th>
-                                    <th>Isya</th>
-                                </tr>
-                            </thead>
-                            <tbody id="monthly_tbody"></tbody>
-                        </table>
+                <div class="card-body-wrap">
+                    <div class="card-body-inner">
+                        <div class="card-body">
+                            <div class="tbl-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Tanggal</th>
+                                            <th>Hari &amp; Pasaran</th>
+                                            <th>Imsak</th>
+                                            <th>Subuh</th>
+                                            <th>Syuruk</th>
+                                            <th>Dhuha</th>
+                                            <th>Dzuhur</th>
+                                            <th>Ashar</th>
+                                            <th>Maghrib</th>
+                                            <th>Isya</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="monthly_tbody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -488,7 +497,6 @@
             return ((a % 360) + 360) % 360;
         }
 
-        // FORMATTER JAM: Memperbaiki sistem pembulatan rollover dari detik ke menit/jam
         function hms(h) {
             if (h === null || isNaN(h)) return '—:——:——';
             h = ((h % 24) + 24) % 24;
@@ -583,7 +591,6 @@
             return atanD(1 / (factor + tanD(za_noon)));
         }
 
-        // ENGINES: Fungsi modular mandiri untuk menghitung data harian komparatif astronomi
         function calculateDayPrayerTimes(yr, mo, dy, lat, lon, TZ, ihtiyathMin) {
             const JD = julianDate(yr, mo, dy, 0);
             const approxTransitUT = (12.0 - TZ) / 24.0;
@@ -881,7 +888,6 @@
             }).join('');
         }
 
-        // PERBAIKAN UTAMA: Manajemen data komputasi dinamis berbasis fungsi modular instansiasi harian
         function hitungSholat() {
             const ld = parseFloat(document.getElementById('lat_d').value) || 0;
             const lm = parseFloat(document.getElementById('lat_m').value) || 0;
@@ -914,7 +920,6 @@
             const meridianStd = TZ * 15;
             const deltaLon = lon - meridianStd;
 
-            // Eksekusi kalkulasi hari tunggal utama
             const dayRes = calculateDayPrayerTimes(yr, mo, dy, lat, lon, TZ, ihtiyathMin);
             const prayers = dayRes.prayers;
             const sun = dayRes.sun;
@@ -922,7 +927,6 @@
             const EoT_min = sun.EoT_min;
             const JD = dayRes.JD;
 
-            // Render Output Tabel Harian Utama
             const prayerDefs = [
                 { id: 'imsak', name: 'Imsak', ar: 'الإمساك', dot: 'dot-imsak' },
                 { id: 'subuh', name: 'Subuh (Fajr)', ar: 'الفجر', dot: 'dot-fajr' },
@@ -954,7 +958,6 @@
                 }
             });
 
-            // Render Output Sudut Jam H & Elevasi Matahari
             const haAltTbody = document.getElementById('ha_alt_tbody');
             haAltTbody.innerHTML = '';
 
@@ -982,7 +985,6 @@
                 </tr>`;
             });
 
-            // Render Output Meta Info Box
             const dateObj = new Date(yr, mo - 1, dy);
             const dateDisp = dateObj.toLocaleDateString('id-ID', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
@@ -1000,7 +1002,6 @@
             const tDzuhurStd = prayers['dzuhur'] ? prayers['dzuhur'].std : null;
             const tDzuhurLmt = prayers['dzuhur'] ? prayers['dzuhur'].lmt : null;
 
-            // Render Output Grid Astronomi
             document.getElementById('astro_grid').innerHTML = `
                 <div class="astro-card"><div class="ac-label">Julian Date</div><div class="ac-value" style="font-size:.82rem">${(JD+0.5).toFixed(5)}</div><div class="ac-unit">T = ${sun.T.toFixed(8)} abad</div></div>
                 <div class="astro-card"><div class="ac-label">Deklinasi δ</div><div class="ac-value">${Dec.toFixed(6)}°</div><div class="ac-unit">${Dec >= 0 ? '↑ Utara Ekuator' : '↓ Selatan Ekuator'}</div><div class="ac-sub">${dmsStr(Dec)}</div></div>
@@ -1016,7 +1017,6 @@
 
             document.getElementById('astro_legend').innerHTML = `<strong>L₀</strong>=${sun.L0.toFixed(4)}° &nbsp;|&nbsp; <strong>M</strong>=${sun.M.toFixed(4)}° &nbsp;|&nbsp; <strong>C</strong>=${sun.C.toFixed(4)}° &nbsp;|&nbsp; <strong>e</strong>=${sun.e.toFixed(8)} &nbsp;|&nbsp; <strong>Ω</strong>=${sun.Omega.toFixed(4)}° &nbsp;|&nbsp; <strong>Δψ</strong>=${(sun.dPsi*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>Δε</strong>=${(sun.dEps*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>Aberasi</strong>=${(sun.aberration*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>δ</strong>=${Dec.toFixed(6)}° &nbsp;|&nbsp; <strong>EoT</strong>=${eotSign}${EoT_min.toFixed(6)} menit`;
 
-            // Render Output Parameter Tabel Rincian Perhitungan
             const rows = [
                 ['Julian Date (JD)', 'JD', (JD+0.5).toFixed(8), 'Julian Day Number'],
                 ['Waktu Julian T', 'T', sun.T.toFixed(10), 'abad Julian sejak J2000.0'],
@@ -1063,16 +1063,12 @@
                 <td style="color:var(--ink-muted);font-size:.75rem">${u}</td>
             </tr>`).join('');
 
-            // =========================================================================
-            // PERBAIKAN SEBULAN: Iterasi murni tanggal objek harian untuk fluktuasi riil
-            // =========================================================================
             window.calculatedMonthlyData = [];
             const totalDaysInMonth = new Date(yr, mo, 0).getDate();
             const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             document.getElementById('monthly_title').innerText = `Waktu Sholat Sebulan — ${namaBulanIndo[mo-1]} ${yr}`;
 
             for (let d = 1; d <= totalDaysInMonth; d++) {
-                // Mengeksekusi instansiasi fungsi internal harian untuk memperoleh fluktuasi Deklinasi & EoT yang tepat
                 const loopDayRes = calculateDayPrayerTimes(yr, mo, d, lat, lon, TZ, ihtiyathMin);
 
                 const currentLoopDate = new Date(yr, mo - 1, d);
