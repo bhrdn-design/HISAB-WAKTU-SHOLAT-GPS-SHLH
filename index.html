@@ -175,7 +175,7 @@
         }
         .lp-masehi { font-size: .95rem; font-weight: 600; color: var(--white); letter-spacing: 0.02em;}
         .lp-hijri { font-size: .95rem; color: var(--gold-light); font-family: 'Inter', sans-serif; font-weight: 600; letter-spacing: 0.03em; margin-top: 4px; text-shadow: 0 2px 4px rgba(0,0,0,0.2);}
-        .lp-time { display: flex; align-items: center; gap: 14px; }
+        .lp-time { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center;}
         .lp-clock {
             font-family: 'JetBrains Mono', monospace;
             font-size: 1.5rem;
@@ -277,6 +277,13 @@
                     <option value="8">WITA</option>
                     <option value="9">WIT</option>
                     <option value="WIS">WIS</option>
+                </select>
+                <select class="lp-select" id="lp_hijri_koreksi" onchange="updateLiveDateTime()" title="Koreksi Tanggal Hijriyah (Sesuaikan dengan Ketetapan Pemerintah)">
+                    <option value="-2">Hijriyah: -2 Hari</option>
+                    <option value="-1" selected>Hijriyah: -1 Hari (MABIMS)</option>
+                    <option value="0">Hijriyah: Global (Umm al-Qura)</option>
+                    <option value="1">Hijriyah: +1 Hari</option>
+                    <option value="2">Hijriyah: +2 Hari</option>
                 </select>
             </div>
         </div>
@@ -426,7 +433,6 @@
 
                             <div class="download-action-panel">
                                 <button class="btn-gps btn-download-excel" onclick="unduhJadwalExcel()" type="button" title="Unduh Jadwal Format Excel Modern (.xls)">📊 Unduh Excel (.xls)</button>
-                                
                                 <button class="btn-gps btn-download-pdf" onclick="unduhJadwalPDF()" type="button" title="Unduh Jadwal Format PDF">📄 Unduh PDF (.pdf)</button>
                             </div>
                         </div>
@@ -580,7 +586,6 @@
             return sign * (Math.abs(d) + m / 60 + s / 3600);
         }
 
-        // PERBAIKAN: Menghitung Julian Date secara Presisi Tinggi (Meeus)
         function julianDate(year, month, day, UT = 0) {
             let y = year;
             let m = month;
@@ -590,51 +595,113 @@
             return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + UT / 24.0 + B - 1524.5;
         }
 
-        // PERBAIKAN KODE INTI: Implementasi Penuh Standar Algoritma Jean Meeus
+        // PERBAIKAN TOTAL: Fungsi Konversi Hijriyah dengan Parameter Koreksi Fleksibel
+        function konversiHijriyah(dateObj, koreksiHari = 0) {
+            const bulanHijriyah = [
+                "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir", 
+                "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban", 
+                "Ramadan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
+            ];
+            
+            // Implementasi Penggeseran Waktu Sesuai Koreksi Pengguna (MABIMS / Global)
+            let adjustedDate = new Date(dateObj.getTime());
+            adjustedDate.setDate(adjustedDate.getDate() + parseInt(koreksiHari));
+
+            try {
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    calendar: 'islamic-umalqura',
+                    numberingSystem: 'latn',
+                    day: 'numeric',
+                    month: 'numeric',
+                    year: 'numeric'
+                });
+                
+                let d = NaN, m = NaN, y = NaN;
+                const parts = formatter.formatToParts(adjustedDate);
+                
+                for (let part of parts) {
+                    if (part.type === 'day') d = parseInt(part.value, 10);
+                    if (part.type === 'month') m = parseInt(part.value, 10);
+                    if (part.type === 'year') {
+                        let match = part.value.match(/\d+/); 
+                        if(match) y = parseInt(match[0], 10);
+                    }
+                }
+
+                if (isNaN(m) || isNaN(d) || isNaN(y)) {
+                    const str = formatter.format(adjustedDate); 
+                    const match = str.match(/(\d+)\/(\d+)\/(\d+)/);
+                    if(match) {
+                        m = parseInt(match[1], 10);
+                        d = parseInt(match[2], 10);
+                        y = parseInt(match[3], 10);
+                    }
+                }
+
+                if (!isNaN(m) && m >= 1 && m <= 12) {
+                    return { d: d, m: m, bulan: bulanHijriyah[m - 1], y: y };
+                } else {
+                    throw new Error("Intl parsing gagal");
+                }
+            } catch (e) {
+                // Fallback: Metode Matematis Tabular (Epoch Sipil 16 Juli 622) jika API browser macet
+                let y = adjustedDate.getFullYear();
+                let m = adjustedDate.getMonth() + 1;
+                let d = adjustedDate.getDate();
+                if (m < 3) { y -= 1; m += 12; }
+                let a = Math.floor(y / 100);
+                let b = 2 - a + Math.floor(a / 4);
+                let jd = Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + b - 1524;
+                
+                let z = jd - 1948085;
+                let cyc = Math.floor(z / 10631);
+                let zCyc = z - 10631 * cyc;
+                let j = Math.floor((zCyc - 0.1335) / 354.36667);
+                let hYear = 30 * cyc + j;
+                let zYear = zCyc - Math.floor(j * 354.36667 + 0.1335);
+                let hMonth = Math.floor((zYear + 28.5001) / 29.5);
+                if (hMonth === 13) hMonth = 12;
+                let hDay = zYear - Math.floor(29.5001 * hMonth - 29);
+                
+                return { d: hDay, m: hMonth, bulan: bulanHijriyah[hMonth - 1], y: hYear };
+            }
+        }
+
         function sunPosition(JD) {
             const T = (JD - 2451545.0) / 36525.0; 
             const T2 = T * T;
             const T3 = T2 * T;
 
-            // Geometric Mean Longitude (L0) and Mean Anomaly (M) of the Sun
             const L0 = norm360(280.46646 + 36000.76983 * T + 0.0003032 * T2);
             const M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T2);
             const e = 0.016708634 - 0.000042037 * T - 0.0000001267 * T2;
 
-            // Sun's Equation of Center (C)
             const C = (1.914602 - 0.004817 * T - 0.000014 * T2) * sinD(M) + 
                       (0.019993 - 0.000101 * T) * sinD(2 * M) + 
                       0.000289 * sinD(3 * M);
 
-            // True Geometric Longitude (SunLon) and True Anomaly (v)
             const sunLon = norm360(L0 + C);
             const v = M + C; 
 
-            // Radius Vector (Distance to Sun in AU)
             const R = 1.000001018 * (1 - e * e) / (1 + e * cosD(v));
 
-            // Nutation and Aberration corrections for Apparent Longitude
             const Omega = norm360(125.04452 - 1934.136261 * T + 0.0020708 * T2 + T3 / 450000);
-            const Mprime = norm360(134.96298 + 477198.867398 * T + 0.0086972 * T2); // Bulan (untuk display saja)
-            const F = norm360(93.27191 + 483202.017538 * T - 0.0036825 * T2); // Arg Lat Bulan (untuk display)
+            const Mprime = norm360(134.96298 + 477198.867398 * T + 0.0086972 * T2);
+            const F = norm360(93.27191 + 483202.017538 * T - 0.0036825 * T2);
 
-            // dPsi & dEps in Degrees (sebelumnya dihitung dalam arcsec langsung, sekarang degree agar koheren)
             const dPsi = (-17.20 * sinD(Omega) - 1.32 * sinD(2 * L0) - 0.23 * sinD(2 * Mprime) + 0.21 * sinD(2 * Omega) + 0.21 * sinD(2 * F)) / 3600.0;
             const dEps = ( 9.20 * cosD(Omega) + 0.57 * cosD(2 * L0) + 0.10 * cosD(2 * Mprime) - 0.09 * cosD(2 * Omega)) / 3600.0;
             
             const aberration = -20.4898 / R / 3600.0;
-            const sunLonApp = sunLon + dPsi + aberration; // Bujur Matahari Semu
+            const sunLonApp = sunLon + dPsi + aberration; 
 
-            // Obliquity of Ecliptic
             const eps0 = 23.439291111 - 0.013004167 * T - 0.0000001639 * T2 + 0.0000005036 * T3;
             const eps = eps0 + dEps;
 
-            // Declination and Right Ascension
             const Dec = asinD(sinD(eps) * sinD(sunLonApp));
             const RA = atan2D(cosD(eps) * sinD(sunLonApp), cosD(sunLonApp));
             const RA_norm = norm360(RA);
 
-            // Equation of Time (Perhitungan Presisi Tinggi)
             const y = Math.pow(Math.tan(eps * DEG / 2), 2);
             const L0r = L0 * DEG;
             const Mr = M * DEG;
@@ -644,7 +711,7 @@
                           + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L0r) 
                           - 0.5 * y * y * Math.sin(4 * L0r) 
                           - 1.25 * e * e * Math.sin(2 * Mr);
-            const EoT_min = EoT_rad * RAD * 4.0; // Dalam Menit Waktu
+            const EoT_min = EoT_rad * RAD * 4.0;
 
             return { T, T2, T3, L0, M, Mprime, Omega, F, e, C, v, sunLon, sunLonApp, R, dPsi, dEps, aberration, eps0, eps, RA, RA_norm, Dec, EoT_min };
         }
@@ -662,26 +729,22 @@
             return atanD(1 / (factor + tanD(za_noon)));
         }
 
-        // PERBAIKAN: Root-finding dinamis iteratif yang ditingkatkan
         function calculateDayPrayerTimes(yr, mo, dy, lat, lon, TZ, ihtiyathMin) {
             const meridianStd = TZ * 15;
             const deltaLon = lon - meridianStd;
-            const JD0 = julianDate(yr, mo, dy, 0); // JD jam 00:00 UT
+            const JD0 = julianDate(yr, mo, dy, 0);
 
-            // Fungsi iterasi presisi
             function computePrayerIterative(type, h_deg, isPreTransit, initialGuessStdLocal, offsetMin = 0, isAshar = false) {
-                let UT_guess = initialGuessStdLocal - TZ; // Konversi tebakan waktu lokal ke UT
+                let UT_guess = initialGuessStdLocal - TZ; 
                 let sunRes = null;
                 let H_val = 0;
                 let alt_val = h_deg;
 
-                // Ditingkatkan menjadi 5 iterasi untuk akurasi konvergensi sub-detik
                 for (let iter = 0; iter < 5; iter++) {
                     sunRes = sunPosition(JD0 + UT_guess / 24.0);
                     let Dec = sunRes.Dec;
                     let EoT_min = sunRes.EoT_min;
                     
-                    // Waktu transit (Dzuhur) lokal dalam skala UT
                     let transitLocal_UT = 12.0 - (lon / 15.0) - (EoT_min / 60.0); 
                     
                     if (type === 'dzuhur') {
@@ -692,31 +755,27 @@
                     }
                     
                     if (isAshar) {
-                        alt_val = asharAltitude(lat, Dec, 1); // Madzhab Syafi'i (1x Bayangan)
+                        alt_val = asharAltitude(lat, Dec, 1);
                     } else {
                         alt_val = h_deg;
                     }
                     
                     let H = hourAngle(alt_val, lat, Dec);
-                    if (H === null) return null; // Jika matahari tidak mencapai sudut tersebut
+                    if (H === null) return null;
                     H_val = H;
 
-                    // Mengkalkulasi jam UT baru untuk iterasi selanjutnya
                     if (isPreTransit) {
                         UT_guess = transitLocal_UT - (H / 15.0) + (offsetMin / 60.0);
                     } else {
                         UT_guess = transitLocal_UT + (H / 15.0) + (offsetMin / 60.0);
                     }
                 }
-                
-                // Kembalikan ke waktu Standar Daerah (Local Standard Time)
                 return { hour: UT_guess + TZ, sun: sunRes, H: H_val, alt: alt_val, ut: UT_guess };
             }
 
-            // Inisiasi nilai sudut standar KEMENAG RI
             let resDzuhur = computePrayerIterative('dzuhur', 0, false, 12.0);
             let resFajr   = computePrayerIterative('subuh', -20.0, true, 4.5);
-            let resImsak  = computePrayerIterative('imsak', -20.0, true, 4.3, -10); // Subuh - 10 Menit
+            let resImsak  = computePrayerIterative('imsak', -20.0, true, 4.3, -10);
             let resSyuruk = computePrayerIterative('syuruk', -1.0, true, 5.7);
             let resDhuha  = computePrayerIterative('dhuha', 4.5, true, 6.5);
             let resAshar  = computePrayerIterative('ashar', 0, false, 15.0, 0, true);
@@ -725,13 +784,13 @@
 
             function extractTimes(res) {
                 if (!res) return null;
-                let stdTime = res.hour; // Waktu Dasar
+                let stdTime = res.hour;
                 let ut = res.ut;
                 let sun = sunPosition(JD0 + ut / 24.0);
                 let EoT_min = sun.EoT_min;
                 
-                let lmt = stdTime + deltaLon / 15.0; // LMT
-                let wis = lmt + EoT_min / 60.0;      // WIS (True Solar Time)
+                let lmt = stdTime + deltaLon / 15.0; 
+                let wis = lmt + EoT_min / 60.0;      
                 
                 return { wis: wis, lmt: lmt, std: stdTime };
             }
@@ -747,7 +806,6 @@
                 isya: extractTimes(resIsya)
             };
 
-            // Menambahkan waktu Ihtiyath
             for (let p in prayers) {
                 if (prayers[p]) {
                     let ihtHours = ihtiyathMin / 60.0;
@@ -902,6 +960,18 @@
             let targetDate = now;
             let timeStr = "";
 
+            const od = parseFloat(document.getElementById('lon_d').value) || 0;
+            const om = parseFloat(document.getElementById('lon_m').value) || 0;
+            const os = parseFloat(document.getElementById('lon_s').value) || 0;
+            const lon = dmsToDecimal(od, om, os);
+
+            const ld = parseFloat(document.getElementById('lat_d').value) || 0;
+            const lm = parseFloat(document.getElementById('lat_m').value) || 0;
+            const ls = parseFloat(document.getElementById('lat_s').value) || 0;
+            const lat = dmsToDecimal(ld, lm, ls);
+
+            let isAfterMaghrib = false;
+
             if (tzSelection === "WIS") {
                 const yr = now.getFullYear();
                 const mo = now.getMonth() + 1;
@@ -911,22 +981,29 @@
                 const JD = julianDate(yr, mo, dy, hUTC);
                 const sun = sunPosition(JD);
                 
-                const od = parseFloat(document.getElementById('lon_d').value) || 0;
-                const om = parseFloat(document.getElementById('lon_m').value) || 0;
-                const os = parseFloat(document.getElementById('lon_s').value) || 0;
-                const lon = dmsToDecimal(od, om, os);
-
                 let wisHours = hUTC + (lon / 15) + (sun.EoT_min / 60);
                 wisHours = ((wisHours % 24) + 24) % 24;
                 timeStr = hms(wisHours);
 
                 const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
                 targetDate = new Date(utc + (lon / 15) * 3600000);
+
+                const H = hourAngle(-1.0, lat, sun.Dec);
+                if (H !== null && wisHours >= (12.0 + H/15.0)) isAfterMaghrib = true;
             } else {
                 const offset = parseInt(tzSelection);
                 const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
                 targetDate = new Date(utc + (3600000 * offset));
                 timeStr = pad(targetDate.getHours()) + ":" + pad(targetDate.getMinutes()) + ":" + pad(targetDate.getSeconds());
+
+                const jd = julianDate(targetDate.getFullYear(), targetDate.getMonth() + 1, targetDate.getDate(), 0);
+                const sun = sunPosition(jd + (18 - offset) / 24.0);
+                const H = hourAngle(-1.0, lat, sun.Dec);
+                if(H !== null) {
+                    const maghribUT = 12.0 - (lon / 15.0) - (sun.EoT_min / 60.0) + (H / 15.0);
+                    const currentLocal = targetDate.getHours() + targetDate.getMinutes()/60 + targetDate.getSeconds()/3600;
+                    if (currentLocal >= (maghribUT + offset)) isAfterMaghrib = true;
+                }
             }
 
             document.getElementById('lp_clock').innerText = timeStr;
@@ -945,34 +1022,19 @@
             
             document.getElementById('lp_masehi').innerText = `${hari} ${pasaran}, ${masehiStr}`;
             
-            try {
-                const bulanHijriyah = [
-                    "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir", 
-                    "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban", 
-                    "Ramadan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
-                ];
-
-                const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
-                    day: 'numeric', month: 'numeric', year: 'numeric'
-                });
-                
-                const parts = formatter.formatToParts(targetDate);
-                let d = '', m = '', y = '';
-                
-                for (let part of parts) {
-                    if (part.type === 'day') d = part.value;
-                    if (part.type === 'month') m = part.value;
-                    if (part.type === 'year') y = part.value;
-                }
-
-                const monthIndex = parseInt(m) - 1;
-                const namaBulanHijri = bulanHijriyah[monthIndex] || m; 
-                const cleanYear = y.replace(/[^0-9]/g, '');
-
-                document.getElementById('lp_hijri').innerText = `${d} ${namaBulanHijri} ${cleanYear} H`;
-            } catch (e) {
-                document.getElementById('lp_hijri').innerText = "Sistem Hijriyah tidak didukung";
+            // Menentukan penambahan Maghrib
+            let hijriDate = new Date(targetDate.getTime());
+            if (isAfterMaghrib) {
+                hijriDate.setDate(hijriDate.getDate() + 1);
             }
+
+            // Membaca Nilai Selector Koreksi Pengguna
+            const selectKoreksi = document.getElementById('lp_hijri_koreksi');
+            const koreksiVal = selectKoreksi ? parseInt(selectKoreksi.value) : -1;
+
+            const hijri = konversiHijriyah(hijriDate, koreksiVal);
+            document.getElementById('lp_hijri_koreksi').title = `Nilai saat ini: Koreksi ${koreksiVal} Hari`;
+            document.getElementById('lp_hijri').innerText = `${hijri.d} ${hijri.bulan} ${hijri.y} H${isAfterMaghrib ? ' (Malam)' : ''}`;
         }
 
         setInterval(updateLiveDateTime, 1000);
@@ -1228,6 +1290,7 @@
             }, 50);
         }
 
+        // PERBAIKAN: Menarik Nilai Koreksi dari Dropdown untuk Labeling Unduhan
         function unduhJadwalExcel() {
             if (!window.calculatedMonthlyData || window.calculatedMonthlyData.length === 0) {
                 alert('Silakan lakukan komputasi kalkulasi waktu sholat terlebih dahulu.');
@@ -1241,42 +1304,20 @@
             const [tahun, bulan] = dateInput.split('-').map(Number);
             const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             
-            const dapatkanBulanDanTahunHijriyah = (tanggalObj) => {
-                try {
-                    const namaBulanHijriyahUser = [
-                        "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir",
-                        "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban",
-                        "Ramadan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
-                    ];
-                    const penterjemah = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
-                        month: 'numeric', year: 'numeric'
-                    });
-                    const pecahan = penterjemah.formatToParts(tanggalObj);
-                    let bln = '', thn = '';
-                    for (let p of pecahan) {
-                        if (p.type === 'month') bln = p.value;
-                        if (p.type === 'year') thn = p.value;
-                    }
-                    const indeksBulan = parseInt(bln) - 1;
-                    const namaBln = namaBulanHijriyahUser[indeksBulan] || bln;
-                    const angkaThn = thn.replace(/[^0-9]/g, '');
-                    return { bulan: namaBln, tahun: angkaThn };
-                } catch (error) {
-                    return { bulan: '', tahun: '' };
-                }
-            };
+            const selectKoreksi = document.getElementById('lp_hijri_koreksi');
+            const koreksiVal = selectKoreksi ? parseInt(selectKoreksi.value) : -1;
 
-            const hijriAwal = dapatkanBulanDanTahunHijriyah(new Date(tahun, bulan - 1, 1));
-            const hijriAkhir = dapatkanBulanDanTahunHijriyah(new Date(tahun, bulan, 0));
+            const hijriAwal = konversiHijriyah(new Date(tahun, bulan - 1, 1), koreksiVal);
+            const hijriAkhir = konversiHijriyah(new Date(tahun, bulan, 0), koreksiVal);
             
             let teksRentangHijriyah = "";
             if (hijriAwal.bulan && hijriAkhir.bulan) {
-                if (hijriAwal.bulan === hijriAkhir.bulan) {
-                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.tahun} H)`;
-                } else if (hijriAwal.tahun === hijriAkhir.tahun) {
-                    teksRentangHijriyah = ` (${hijriAwal.bulan} – ${hijriAkhir.bulan} ${hijriAwal.tahun} H)`;
+                if (hijriAwal.bulan === hijriAkhir.bulan && hijriAwal.y === hijriAkhir.y) {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.y} H)`;
+                } else if (hijriAwal.y === hijriAkhir.y) {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} – ${hijriAkhir.bulan} ${hijriAwal.y} H)`;
                 } else {
-                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.tahun} H – ${hijriAkhir.bulan} ${hijriAkhir.tahun} H)`;
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.y} H – ${hijriAkhir.bulan} ${hijriAkhir.y} H)`;
                 }
             }
 
@@ -1423,6 +1464,25 @@
             const [tahun, bulan] = dateInput.split('-').map(Number);
             const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
+            const selectKoreksi = document.getElementById('lp_hijri_koreksi');
+            const koreksiVal = selectKoreksi ? parseInt(selectKoreksi.value) : -1;
+
+            const hijriAwal = konversiHijriyah(new Date(tahun, bulan - 1, 1), koreksiVal);
+            const hijriAkhir = konversiHijriyah(new Date(tahun, bulan, 0), koreksiVal);
+            
+            let teksRentangHijriyah = "";
+            if (hijriAwal.bulan && hijriAkhir.bulan) {
+                if (hijriAwal.bulan === hijriAkhir.bulan && hijriAwal.y === hijriAkhir.y) {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.y} H)`;
+                } else if (hijriAwal.y === hijriAkhir.y) {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} – ${hijriAkhir.bulan} ${hijriAwal.y} H)`;
+                } else {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.y} H – ${hijriAkhir.bulan} ${hijriAkhir.y} H)`;
+                }
+            }
+
+            const periodeStr = `${namaBulanIndo[bulan-1]} ${tahun}${teksRentangHijriyah}`;
+
             const lintangTxt = document.getElementById('lat_dec').textContent;
             const bujurTxt = document.getElementById('lon_dec').textContent;
             const tzLabelTxt = document.getElementById('tz_label').textContent;
@@ -1445,7 +1505,7 @@
             doc.setFontSize(9);
             doc.text(`Lokasi Tempat    : ${tempat.toUpperCase()}`, 40, 75);
             doc.text(`Koordinat Geograf: Lintang ${lintangTxt} | Bujur ${bujurTxt}`, 40, 88);
-            doc.text(`Periode Bulan    : ${namaBulanIndo[bulan-1]} ${tahun}`, 40, 101);
+            doc.text(`Periode Bulan    : ${periodeStr}`, 40, 101);
             doc.text(`Format / Zona    : ${tzLabelTxt} (${tzName} / LMT / WIS)`, 40, 114);
 
             const head = [
