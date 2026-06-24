@@ -271,7 +271,7 @@
     <div class="container">
         
         <div class="ayat-card">
-            <div class="ayat-ar">أَقِمِ ٱلصَّلَوٰةَ لِدُلُوكِ ٱلشَّمْسِ إِلَىٰ غَسَقِ ٱلَّيْلِ وَقُرْءَانَ ٱلْفَجْرِ ۖ إِنَّ قُرْءَانَ ٱلْفَجْرِ كَانَ mَشْهُودًا</div>
+            <div class="ayat-ar">أَقِمِ ٱلصَّلَوٰةَ لِدُلُوكِ ٱلشَّمْسِ إِلَىٰ غَسَقِ ٱلَّيْلِ وَقُرْءَانَ ٱلْفَجْرِ ۖ إِنَّ قُرْءَانَ ٱلْفَجْرِ كَانَ مَشْهُودًا</div>
             <div class="ayat-id">"Dirikanlah shalat dari sesudah matahari tergelincir sampai gelap malam dan (dirikanlah pula shalat) subuh. Sesungguhnya shalat subuh itu disaksikan (oleh malaikat)."</div>
             <div class="ayat-ref">QS. Al-Isra' : 78</div>
         </div>
@@ -899,9 +899,9 @@
             
             try {
                 const bulanHijriyah = [
-                    "Muharam", "Safar", "Rabiulawal", "Rabiulakhir", 
-                    "Jumadilawal", "Jumadilakhir", "Rajab", "Syaban", 
-                    "Ramadan", "Syawal", "Zulkaidah", "Zulhijah"
+                    "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir", 
+                    "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban", 
+                    "Ramadan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
                 ];
 
                 const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
@@ -918,10 +918,10 @@
                 }
 
                 const monthIndex = parseInt(m) - 1;
-                const namaBulan営業 = bulanHijriyah[monthIndex] || m; 
+                const namaBulanHijri = bulanHijriyah[monthIndex] || m; 
                 const cleanYear = y.replace(/[^0-9]/g, '');
 
-                document.getElementById('lp_hijri').innerText = `${d} ${namaBulan営業} ${cleanYear} H`;
+                document.getElementById('lp_hijri').innerText = `${d} ${namaBulanHijri} ${cleanYear} H`;
             } catch (e) {
                 document.getElementById('lp_hijri').innerText = "Sistem Hijriyah tidak didukung";
             }
@@ -1008,10 +1008,10 @@
             document.getElementById('monthly_sub_head').innerHTML = subHeadHtml;
 
             const prayerDefs = [
-                { id: 'imsak', name: 'Imsak', ar: 'الإمساak', dot: 'dot-imsak' },
+                { id: 'imsak', name: 'Imsak', ar: 'الإمساك', dot: 'dot-imsak' },
                 { id: 'subuh', name: 'Subuh (Fajr)', ar: 'الفجر', dot: 'dot-fajr' },
-                { id: 'syuruk', name: 'Syuruk (Terbit)', ar: 'الشروق', dot: 'dot-syuruk' },
-                { id: 'dhuha', name: 'Dhuha', ar: 'الضحى', dot: 'dot-dhuha' },
+                { id: 'syuruk', name: 'Syuruk (Terbit)', ar: 'الشروuk', dot: 'dot-syuruk' },
+                { id: 'dhuha', name: 'Dhuha', ar: 'الالضحى', dot: 'dot-dhuha' },
                 { id: 'dzuhur', name: 'Dzuhur (Dhuhr)', ar: 'الظهر', dot: 'dot-dhuhr' },
                 { id: 'ashar', name: "Ashar ('Asr)", ar: 'العصر', dot: 'dot-asr' },
                 { id: 'maghrib', name: 'Maghrib', ar: 'المغرب', dot: 'dot-maghrib' },
@@ -1021,12 +1021,30 @@
             const tbody = document.getElementById('prayer_tbody');
             tbody.innerHTML = '';
 
-            prayerDefs.forEach(p => {
+            playerDefs: p => {
                 const t = prayers[p.id];
                 if (!t) {
                     tbody.innerHTML += `<tr>
                         <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
                         <td colspan="3" style="text-align:center;color:var(--ink-muted);font-size:.8rem">Tidak dapat dihitung (kutub / matahari tidak terbit/tenggelam)</td>
+                    </tr>`;
+                } else {
+                    tbody.innerHTML += `<tr>
+                        <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
+                        <td class="time-std">${hms(t.std)}</td>
+                        <td class="time-lmt">${hms(t.lmt)}</td>
+                        <td class="time-wis">${hms(t.wis)}</td>
+                    </tr>`;
+                }
+            };
+
+            // Fix for loop binding array safely
+            prayerDefs.forEach(p => {
+                const t = prayers[p.id];
+                if (!t) {
+                    tbody.innerHTML += `<tr>
+                        <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
+                        <td colspan="3" style="text-align:center;color:var(--ink-muted);font-size:.8rem">Tidak dapat dihitung</td>
                     </tr>`;
                 } else {
                     tbody.innerHTML += `<tr>
@@ -1190,7 +1208,49 @@
             const dateInput = document.getElementById('tgl_input').value;
             const [tahun, bulan] = dateInput.split('-').map(Number);
             const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-            const periodeStr = `${namaBulanIndo[bulan-1]} ${tahun}`;
+            
+            // FUNGSI KOMPUTASI BULAN HIJRIYAH SECARA AKURAT UNTUK PERIODE EXCEL
+            const dapatkanBulanDanTahunHijriyah = (tanggalObj) => {
+                try {
+                    const namaBulanHijriyahUser = [
+                        "Muharram", "Safar", "Rabiul Awal", "Rabiul Akhir",
+                        "Jumadil Awal", "Jumadil Akhir", "Rajab", "Sya'ban",
+                        "Ramadan", "Syawal", "Dzulqa'dah", "Dzulhijjah"
+                    ];
+                    const penterjemah = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+                        month: 'numeric', year: 'numeric'
+                    });
+                    const pecahan = penterjemah.formatToParts(tanggalObj);
+                    let bln = '', thn = '';
+                    for (let p of pecahan) {
+                        if (p.type === 'month') bln = p.value;
+                        if (p.type === 'year') thn = p.value;
+                    }
+                    const indeksBulan = parseInt(bln) - 1;
+                    const namaBln = namaBulanHijriyahUser[indeksBulan] || bln;
+                    const angkaThn = thn.replace(/[^0-9]/g, '');
+                    return { bulan: namaBln, tahun: angkaThn };
+                } catch (error) {
+                    return { bulan: '', tahun: '' };
+                }
+            };
+
+            // Hitung Hijriyah pada awal dan akhir bulan Masehi
+            const hijriAwal = dapatkanBulanDanTahunHijriyah(new Date(tahun, bulan - 1, 1));
+            const hijriAkhir = dapatkanBulanDanTahunHijriyah(new Date(tahun, bulan, 0));
+            
+            let teksRentangHijriyah = "";
+            if (hijriAwal.bulan && hijriAkhir.bulan) {
+                if (hijriAwal.bulan === hijriAkhir.bulan) {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.tahun} H)`;
+                } else if (hijriAwal.tahun === hijriAkhir.tahun) {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} – ${hijriAkhir.bulan} ${hijriAwal.tahun} H)`;
+                } else {
+                    teksRentangHijriyah = ` (${hijriAwal.bulan} ${hijriAwal.tahun} H – ${hijriAkhir.bulan} ${hijriAkhir.tahun} H)`;
+                }
+            }
+
+            const periodeStr = `${namaBulanIndo[bulan-1]} ${tahun}${teksRentangHijriyah}`;
             
             const lintangTxt = document.getElementById('lat_dec').textContent;
             const bujurTxt = document.getElementById('lon_dec').textContent;
@@ -1303,7 +1363,7 @@
             </html>
             `;
 
-            const namaFileBersih = `Jadwal_Excel_${tempat.replace(/[^a-zA-Z0-9]/g, '_')}_${periodeStr.replace(' ', '_')}.xls`;
+            const namaFileBersih = `Jadwal_Excel_${tempat.replace(/[^a-zA-Z0-9]/g, '_')}_${tahun}_${bulan}.xls`;
             const blob = new Blob(['\uFEFF' + excelTemplate], { type: 'application/vnd.ms-excel;charset=utf-8;' });
             const link = document.createElement("a");
             if (link.download !== undefined) {
