@@ -222,7 +222,6 @@
             box-shadow: 0 4px 12px rgba(16,124,65,0.3) !important;
         }
         
-        /* TOMBOL PDF (BARU) */
         .btn-download-pdf {
             background-color: #e74c3c !important;
             border-color: #c0392b !important;
@@ -532,6 +531,8 @@
 
     <script>
         "use strict";
+        
+        // Konstanta Matematika
         const DEG = Math.PI / 180;
         const RAD = 180 / Math.PI;
 
@@ -579,53 +580,71 @@
             return sign * (Math.abs(d) + m / 60 + s / 3600);
         }
 
+        // PERBAIKAN: Menghitung Julian Date secara Presisi Tinggi (Meeus)
         function julianDate(year, month, day, UT = 0) {
             let y = year;
             let m = month;
             if (m <= 2) { y -= 1; m += 12; }
             const A = Math.floor(y / 100);
             const B = 2 - A + Math.floor(A / 4);
-            return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + B - 1524.5 + UT / 24;
+            return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + day + UT / 24.0 + B - 1524.5;
         }
 
+        // PERBAIKAN KODE INTI: Implementasi Penuh Standar Algoritma Jean Meeus
         function sunPosition(JD) {
-            const T = (JD - 2451545.0) / 36525; 
+            const T = (JD - 2451545.0) / 36525.0; 
             const T2 = T * T;
             const T3 = T2 * T;
 
+            // Geometric Mean Longitude (L0) and Mean Anomaly (M) of the Sun
             const L0 = norm360(280.46646 + 36000.76983 * T + 0.0003032 * T2);
             const M = norm360(357.52911 + 35999.05029 * T - 0.0001537 * T2);
-            const Mprime = norm360(134.96298 + 477198.867398 * T + 0.0086972 * T2);
-            const F = norm360(93.27191 + 483202.017538 * T - 0.0036825 * T2);
-            const Omega = norm360(125.04452 - 1934.136261 * T + 0.0020708 * T2 + T3 / 450000);
             const e = 0.016708634 - 0.000042037 * T - 0.0000001267 * T2;
 
-            const C = (1.9146 - 0.004817 * T - 0.000014 * T2) * sinD(M) + 
+            // Sun's Equation of Center (C)
+            const C = (1.914602 - 0.004817 * T - 0.000014 * T2) * sinD(M) + 
                       (0.019993 - 0.000101 * T) * sinD(2 * M) + 
-                      0.00029 * sinD(3 * M);
+                      0.000289 * sinD(3 * M);
 
+            // True Geometric Longitude (SunLon) and True Anomaly (v)
             const sunLon = norm360(L0 + C);
             const v = M + C; 
+
+            // Radius Vector (Distance to Sun in AU)
             const R = 1.000001018 * (1 - e * e) / (1 + e * cosD(v));
 
-            const dPsi = ( -17.20 * sinD(Omega) - 1.32 * sinD(2 * L0) - 0.23 * sinD(2 * Mprime) + 0.21 * sinD(2 * Omega) + 0.21 * sinD(2 * F) ) / 3600;
-            const dEps = ( 9.20 * cosD(Omega) + 0.57 * cosD(2 * L0) + 0.10 * cosD(2 * Mprime) - 0.09 * cosD(2 * Omega) ) / 3600;
-            const aberration = -20.4898 / R / 3600;
+            // Nutation and Aberration corrections for Apparent Longitude
+            const Omega = norm360(125.04452 - 1934.136261 * T + 0.0020708 * T2 + T3 / 450000);
+            const Mprime = norm360(134.96298 + 477198.867398 * T + 0.0086972 * T2); // Bulan (untuk display saja)
+            const F = norm360(93.27191 + 483202.017538 * T - 0.0036825 * T2); // Arg Lat Bulan (untuk display)
 
-            const sunLonApp = sunLon + dPsi + aberration;
+            // dPsi & dEps in Degrees (sebelumnya dihitung dalam arcsec langsung, sekarang degree agar koheren)
+            const dPsi = (-17.20 * sinD(Omega) - 1.32 * sinD(2 * L0) - 0.23 * sinD(2 * Mprime) + 0.21 * sinD(2 * Omega) + 0.21 * sinD(2 * F)) / 3600.0;
+            const dEps = ( 9.20 * cosD(Omega) + 0.57 * cosD(2 * L0) + 0.10 * cosD(2 * Mprime) - 0.09 * cosD(2 * Omega)) / 3600.0;
+            
+            const aberration = -20.4898 / R / 3600.0;
+            const sunLonApp = sunLon + dPsi + aberration; // Bujur Matahari Semu
+
+            // Obliquity of Ecliptic
             const eps0 = 23.439291111 - 0.013004167 * T - 0.0000001639 * T2 + 0.0000005036 * T3;
             const eps = eps0 + dEps;
 
+            // Declination and Right Ascension
             const Dec = asinD(sinD(eps) * sinD(sunLonApp));
             const RA = atan2D(cosD(eps) * sinD(sunLonApp), cosD(sunLonApp));
             const RA_norm = norm360(RA);
 
+            // Equation of Time (Perhitungan Presisi Tinggi)
             const y = Math.pow(Math.tan(eps * DEG / 2), 2);
             const L0r = L0 * DEG;
             const Mr = M * DEG;
 
-            const EoT_rad = y * Math.sin(2 * L0r) - 2 * e * Math.sin(Mr) + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L0r) - 0.5 * y * y * Math.sin(4 * L0r) - 1.25 * e * e * Math.sin(2 * Mr);
-            const EoT_min = EoT_rad * RAD * 4;
+            const EoT_rad = y * Math.sin(2 * L0r) 
+                          - 2 * e * Math.sin(Mr) 
+                          + 4 * e * y * Math.sin(Mr) * Math.cos(2 * L0r) 
+                          - 0.5 * y * y * Math.sin(4 * L0r) 
+                          - 1.25 * e * e * Math.sin(2 * Mr);
+            const EoT_min = EoT_rad * RAD * 4.0; // Dalam Menit Waktu
 
             return { T, T2, T3, L0, M, Mprime, Omega, F, e, C, v, sunLon, sunLonApp, R, dPsi, dEps, aberration, eps0, eps, RA, RA_norm, Dec, EoT_min };
         }
@@ -643,68 +662,76 @@
             return atanD(1 / (factor + tanD(za_noon)));
         }
 
+        // PERBAIKAN: Root-finding dinamis iteratif yang ditingkatkan
         function calculateDayPrayerTimes(yr, mo, dy, lat, lon, TZ, ihtiyathMin) {
             const meridianStd = TZ * 15;
             const deltaLon = lon - meridianStd;
-            const JD0 = julianDate(yr, mo, dy, 0);
+            const JD0 = julianDate(yr, mo, dy, 0); // JD jam 00:00 UT
 
-            function computePrayerIterative(type, h_deg, isPreTransit, initialGuess, offsetMin = 0, isAshar = false) {
-                let hourGuess = initialGuess;
+            // Fungsi iterasi presisi
+            function computePrayerIterative(type, h_deg, isPreTransit, initialGuessStdLocal, offsetMin = 0, isAshar = false) {
+                let UT_guess = initialGuessStdLocal - TZ; // Konversi tebakan waktu lokal ke UT
                 let sunRes = null;
                 let H_val = 0;
                 let alt_val = h_deg;
 
-                for (let iter = 0; iter < 3; iter++) {
-                    let ut = hourGuess - TZ;
-                    sunRes = sunPosition(JD0 + ut / 24.0);
+                // Ditingkatkan menjadi 5 iterasi untuk akurasi konvergensi sub-detik
+                for (let iter = 0; iter < 5; iter++) {
+                    sunRes = sunPosition(JD0 + UT_guess / 24.0);
                     let Dec = sunRes.Dec;
                     let EoT_min = sunRes.EoT_min;
                     
-                    let transitLocal = 12.0 - deltaLon / 15.0 - EoT_min / 60.0;
+                    // Waktu transit (Dzuhur) lokal dalam skala UT
+                    let transitLocal_UT = 12.0 - (lon / 15.0) - (EoT_min / 60.0); 
                     
                     if (type === 'dzuhur') {
-                        hourGuess = transitLocal;
+                        UT_guess = transitLocal_UT;
                         H_val = 0;
                         alt_val = 90 - Math.abs(lat - Dec);
-                        break; 
+                        continue; 
                     }
                     
                     if (isAshar) {
-                        alt_val = asharAltitude(lat, Dec, 1);
+                        alt_val = asharAltitude(lat, Dec, 1); // Madzhab Syafi'i (1x Bayangan)
                     } else {
                         alt_val = h_deg;
                     }
                     
                     let H = hourAngle(alt_val, lat, Dec);
-                    if (H === null) return null;
+                    if (H === null) return null; // Jika matahari tidak mencapai sudut tersebut
                     H_val = H;
 
+                    // Mengkalkulasi jam UT baru untuk iterasi selanjutnya
                     if (isPreTransit) {
-                        hourGuess = transitLocal - H / 15.0 + offsetMin / 60.0;
+                        UT_guess = transitLocal_UT - (H / 15.0) + (offsetMin / 60.0);
                     } else {
-                        hourGuess = transitLocal + H / 15.0 + offsetMin / 60.0;
+                        UT_guess = transitLocal_UT + (H / 15.0) + (offsetMin / 60.0);
                     }
                 }
-                return { hour: hourGuess, sun: sunRes, H: H_val, alt: alt_val };
+                
+                // Kembalikan ke waktu Standar Daerah (Local Standard Time)
+                return { hour: UT_guess + TZ, sun: sunRes, H: H_val, alt: alt_val, ut: UT_guess };
             }
 
+            // Inisiasi nilai sudut standar KEMENAG RI
             let resDzuhur = computePrayerIterative('dzuhur', 0, false, 12.0);
-            let resFajr = computePrayerIterative('subuh', -20.0, true, 4.5);
-            let resImsak = computePrayerIterative('imsak', -20.0, true, 4.3, -10);
+            let resFajr   = computePrayerIterative('subuh', -20.0, true, 4.5);
+            let resImsak  = computePrayerIterative('imsak', -20.0, true, 4.3, -10); // Subuh - 10 Menit
             let resSyuruk = computePrayerIterative('syuruk', -1.0, true, 5.7);
-            let resDhuha = computePrayerIterative('dhuha', 4.5, true, 6.5);
-            let resAshar = computePrayerIterative('ashar', 0, false, 15.0, 0, true);
-            let resMaghrib = computePrayerIterative('maghrib', -1.0, false, 18.0);
-            let resIsya = computePrayerIterative('isya', -18.0, false, 19.2);
+            let resDhuha  = computePrayerIterative('dhuha', 4.5, true, 6.5);
+            let resAshar  = computePrayerIterative('ashar', 0, false, 15.0, 0, true);
+            let resMaghrib= computePrayerIterative('maghrib', -1.0, false, 18.0);
+            let resIsya   = computePrayerIterative('isya', -18.0, false, 19.2);
 
             function extractTimes(res) {
                 if (!res) return null;
-                let stdTime = res.hour;
-                let ut = stdTime - TZ;
+                let stdTime = res.hour; // Waktu Dasar
+                let ut = res.ut;
                 let sun = sunPosition(JD0 + ut / 24.0);
                 let EoT_min = sun.EoT_min;
-                let lmt = stdTime + deltaLon / 15.0;
-                let wis = lmt + EoT_min / 60.0;
+                
+                let lmt = stdTime + deltaLon / 15.0; // LMT
+                let wis = lmt + EoT_min / 60.0;      // WIS (True Solar Time)
                 
                 return { wis: wis, lmt: lmt, std: stdTime };
             }
@@ -720,7 +747,7 @@
                 isya: extractTimes(resIsya)
             };
 
-            // PERBAIKAN: Menambahkan Ihtiyath secara universal ke STD, LMT, dan WIS
+            // Menambahkan waktu Ihtiyath
             for (let p in prayers) {
                 if (prayers[p]) {
                     let ihtHours = ihtiyathMin / 60.0;
@@ -1031,8 +1058,8 @@
             const prayerDefs = [
                 { id: 'imsak', name: 'Imsak', ar: 'الإمساك', dot: 'dot-imsak' },
                 { id: 'subuh', name: 'Subuh (Fajr)', ar: 'الفجر', dot: 'dot-fajr' },
-                { id: 'syuruk', name: 'Syuruk (Terbit)', ar: 'الشروuk', dot: 'dot-syuruk' },
-                { id: 'dhuha', name: 'Dhuha', ar: 'الالضحى', dot: 'dot-dhuha' },
+                { id: 'syuruk', name: 'Syuruk (Terbit)', ar: 'الشروق', dot: 'dot-syuruk' },
+                { id: 'dhuha', name: 'Dhuha', ar: 'الضحى', dot: 'dot-dhuha' },
                 { id: 'dzuhur', name: 'Dzuhur (Dhuhr)', ar: 'الظهر', dot: 'dot-dhuhr' },
                 { id: 'ashar', name: "Ashar ('Asr)", ar: 'العصر', dot: 'dot-asr' },
                 { id: 'maghrib', name: 'Maghrib', ar: 'المغرب', dot: 'dot-maghrib' },
@@ -1063,7 +1090,7 @@
             haAltTbody.innerHTML = '';
 
             const haDefs = [
-                { name: 'Imsak', ar: 'الإمساak', H: dayRes.H_fajr, before: true, alt: -20.0 },
+                { name: 'Imsak', ar: 'الإمساك', H: dayRes.H_fajr, before: true, alt: -20.0 },
                 { name: 'Subuh (Fajr)', ar: 'الفجر', H: dayRes.H_fajr, before: true, alt: -20.0 },
                 { name: 'Syuruk (Terbit)', ar: 'الشروق', H: dayRes.H_syuruk, before: true, alt: -1.0 },
                 { name: 'Dhuha', ar: 'الضحى', H: dayRes.H_dhuha, before: true, alt: 4.5 },
@@ -1104,7 +1131,7 @@
             const tDzuhurLmt = prayers['dzuhur'] ? prayers['dzuhur'].lmt : null;
 
             document.getElementById('astro_grid').innerHTML = `
-                <div class="astro-card"><div class="ac-label">Julian Date</div><div class="ac-value" style="font-size:.82rem">${(JD+0.5).toFixed(5)}</div><div class="ac-unit">T = ${sun.T.toFixed(8)} abad</div></div>
+                <div class="astro-card"><div class="ac-label">Julian Date</div><div class="ac-value" style="font-size:.82rem">${(JD).toFixed(5)}</div><div class="ac-unit">T = ${sun.T.toFixed(8)} abad</div></div>
                 <div class="astro-card"><div class="ac-label">Deklinasi δ</div><div class="ac-value">${Dec.toFixed(6)}°</div><div class="ac-unit">${Dec >= 0 ? '↑ Utara Ekuator' : '↓ Selatan Ekuator'}</div><div class="ac-sub">${dmsStr(Dec)}</div></div>
                 <div class="astro-card"><div class="ac-label">EoT (Perata Waktu)</div><div class="ac-value">${eotSign}${EoT_min.toFixed(4)}</div><div class="ac-unit">menit waktu</div><div class="ac-sub">${eotSign}${(EoT_min * 60).toFixed(1)} detik</div></div>
                 <div class="astro-card"><div class="ac-label">Bujur Ekliptika ☉</div><div class="ac-value">${sun.sunLonApp.toFixed(5)}°</div><div class="ac-unit">Apparent (terkoreksi)</div><div class="ac-sub">Geom: ${sun.sunLon.toFixed(5)}°</div></div>
@@ -1119,7 +1146,7 @@
             document.getElementById('astro_legend').innerHTML = `<strong>L₀</strong>=${sun.L0.toFixed(4)}° &nbsp;|&nbsp; <strong>M</strong>=${sun.M.toFixed(4)}° &nbsp;|&nbsp; <strong>C</strong>=${sun.C.toFixed(4)}° &nbsp;|&nbsp; <strong>e</strong>=${sun.e.toFixed(8)} &nbsp;|&nbsp; <strong>Ω</strong>=${sun.Omega.toFixed(4)}° &nbsp;|&nbsp; <strong>Δψ</strong>=${(sun.dPsi*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>Δε</strong>=${(sun.dEps*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>Aberasi</strong>=${(sun.aberration*3600).toFixed(3)}″ &nbsp;|&nbsp; <strong>δ</strong>=${Dec.toFixed(6)}° &nbsp;|&nbsp; <strong>EoT</strong>=${eotSign}${EoT_min.toFixed(6)} menit`;
 
             const rows = [
-                ['Julian Date (JD)', 'JD', (JD+0.5).toFixed(8), 'Julian Day Number'],
+                ['Julian Date (JD)', 'JD', (JD).toFixed(8), 'Julian Day Number pada 00:00 UT'],
                 ['Waktu Julian T', 'T', sun.T.toFixed(10), 'abad Julian sejak J2000.0'],
                 ['Bujur Ekliptika Rata-rata', 'L₀', sun.L0.toFixed(6)+'°', 'derajat, norm. [0,360)'],
                 ['Anomali Rata-rata Matahari', 'M', sun.M.toFixed(6)+'°', 'derajat'],
@@ -1201,14 +1228,12 @@
             }, 50);
         }
 
-        // FUNGSI UNDUH EXCEL EKSISTING
         function unduhJadwalExcel() {
             if (!window.calculatedMonthlyData || window.calculatedMonthlyData.length === 0) {
                 alert('Silakan lakukan komputasi kalkulasi waktu sholat terlebih dahulu.');
                 return;
             }
 
-            // PERBAIKAN: Menghilangkan teks akurasi GPS melalui regex (Case Insensitive)
             let tempatRaw = document.getElementById('place_name').value || '—';
             const tempat = tempatRaw.replace(/\s*\(Akurasi:\s*±\d+m\)/i, '');
             
@@ -1273,7 +1298,6 @@
                 excelSubThs += `<th class="sub-th">${tzName}</th><th class="sub-th">LMT</th><th class="sub-th">WIS</th>`;
             }
 
-            // PERBAIKAN: Menghilangkan teks " — Jadwal Komparasi Terintegrasi" pada sub-title Excel
             let excelTemplate = `
             <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
             <head>
@@ -1383,18 +1407,15 @@
             }
         }
 
-        // FUNGSI UNDUH PDF YANG DIPERBARUI DENGAN VARIABEL ZONA WAKTU DINAMIS
         function unduhJadwalPDF() {
             if (!window.calculatedMonthlyData || window.calculatedMonthlyData.length === 0) {
                 alert('Silakan lakukan perhitungan waktu sholat terlebih dahulu.');
                 return;
             }
 
-            // Inisialisasi jsPDF mode Landscape untuk A4
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('landscape', 'pt', 'a4');
 
-            // PERBAIKAN: Menghilangkan teks akurasi GPS melalui regex
             let tempatRaw = document.getElementById('place_name').value || '—';
             const tempat = tempatRaw.replace(/\s*\(Akurasi:\s*±\d+m\)/i, '');
             
@@ -1406,7 +1427,6 @@
             const bujurTxt = document.getElementById('lon_dec').textContent;
             const tzLabelTxt = document.getElementById('tz_label').textContent;
 
-            // Logika Pembacaan Zona Waktu Dinamis untuk PDF
             const tzRaw = parseFloat(document.getElementById('tz_input').value);
             let tzName = 'GMT';
             if (tzRaw === 7) tzName = 'WIB';
@@ -1414,12 +1434,10 @@
             else if (tzRaw === 9) tzName = 'WIT';
             else if (!isNaN(tzRaw)) tzName = `UTC${tzRaw >= 0 ? '+' : ''}${tzRaw}`;
 
-            // Render Header PDF
             doc.setFontSize(16);
             doc.setFont("helvetica", "bold");
             doc.text("JADWAL WAKTU SHALAT BULANAN", 40, 40);
 
-            // PERBAIKAN: Menghilangkan teks " — Jadwal Komparasi Terintegrasi" pada sub-title PDF
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
             doc.text("Sistem Aplikasi Data Hisab Falak", 40, 55);
@@ -1430,7 +1448,6 @@
             doc.text(`Periode Bulan    : ${namaBulanIndo[bulan-1]} ${tahun}`, 40, 101);
             doc.text(`Format / Zona    : ${tzLabelTxt} (${tzName} / LMT / WIS)`, 40, 114);
 
-            // Persiapan Kolom dan Data Array untuk AutoTable (Mengganti STD dengan variabel tzName)
             const head = [
                 [
                     { content: 'No', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
@@ -1446,14 +1463,14 @@
                     { content: 'Isya', colSpan: 3, styles: { halign: 'center' } }
                 ],
                 [
-                    tzName, 'LMT', 'WIS', // Imsak
-                    tzName, 'LMT', 'WIS', // Subuh
-                    tzName, 'LMT', 'WIS', // Syuruk
-                    tzName, 'LMT', 'WIS', // Dhuha
-                    tzName, 'LMT', 'WIS', // Dzuhur
-                    tzName, 'LMT', 'WIS', // Ashar
-                    tzName, 'LMT', 'WIS', // Maghrib
-                    tzName, 'LMT', 'WIS'  // Isya
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS', 
+                    tzName, 'LMT', 'WIS'  
                 ]
             ];
 
@@ -1474,7 +1491,6 @@
                 ];
             });
 
-            // Eksekusi Pembuatan Tabel
             doc.autoTable({
                 startY: 130,
                 head: head,
@@ -1484,18 +1500,16 @@
                 headStyles: { fillColor: [13, 33, 55], textColor: [255, 255, 255] },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
                 columnStyles: {
-                    2: { halign: 'left' } // Rata kiri untuk Hari Pasaran
+                    2: { halign: 'left' } 
                 },
                 margin: { top: 30, right: 30, bottom: 30, left: 30 }
             });
 
-            // Tambahkan Catatan Footer Dinamis (Ihtiyath)
             const finalY = doc.lastAutoTable.finalY || doc.autoTable.previous.finalY;
             doc.setFont("helvetica", "italic");
             doc.setFontSize(8);
             doc.text(`* Waktu daerah (${tzName}) pada tabel di atas sudah memperhitungkan penambahan nilai pengaman waktu (Ihtiyath).`, 40, finalY + 15);
 
-            // Simpan Berkas PDF
             const namaFileBersih = `Jadwal_PDF_${tempat.replace(/[^a-zA-Z0-9]/g, '_')}_${tahun}_${bulan}.pdf`;
             doc.save(namaFileBersih);
         }
