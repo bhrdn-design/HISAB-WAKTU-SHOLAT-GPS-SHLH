@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hisab Falak — Waktu Sholat & Astronomi Matahari</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
         
@@ -217,6 +221,17 @@
             background-color: #0b5930 !important;
             box-shadow: 0 4px 12px rgba(16,124,65,0.3) !important;
         }
+        
+        /* TOMBOL PDF (BARU) */
+        .btn-download-pdf {
+            background-color: #e74c3c !important;
+            border-color: #c0392b !important;
+            color: var(--white) !important;
+        }
+        .btn-download-pdf:hover {
+            background-color: #c0392b !important;
+            box-shadow: 0 4px 12px rgba(231,76,60,0.3) !important;
+        }
 
         @media(max-width: 650px) {
             .live-panel { flex-direction: column; gap: 14px; padding: 18px; }
@@ -235,7 +250,7 @@
             .masthead h1 { font-size: 1.4rem; }
             .masthead-ar { font-size: 2.2rem; }
             .dt-grid { grid-template-columns: 1fr; }
-            thead th { padding: 8px 4px; font-size: .68rem; }
+            .thead th { padding: 8px 4px; font-size: .68rem; }
             td { padding: 10px 6px; font-size: .8rem; }
             td.time-std { font-size: .84rem; }
             .btn-gps { width: 100%; justify-content: center; margin-top: 8px; margin-left: 0 !important; }
@@ -348,7 +363,7 @@
                             <thead>
                                 <tr>
                                     <th style="text-align:left">Sholat</th>
-                                    <th id="th_prayer_std">Waktu Daerah<span class="th-sub">Standard Time</span></th>
+                                    <th id="th_prayer_std">Waktu Daerah<span class="th-sub">WIB</span></th>
                                     <th>Waktu LMT<span class="th-sub">Local Mean Time</span></th>
                                     <th>Waktu WIS<span class="th-sub">Istiwa / True Solar</span></th>
                                 </tr>
@@ -358,8 +373,8 @@
                     </div>
                     <br>
                     <div class="legend" id="prayer_legend">
-                        <strong>Waktu Daerah (STD)</strong>: Waktu resmi zona (WIB/WITA/WIT/UTC±) <strong>(+ Ihtiyath)</strong>. &nbsp;|&nbsp; 
-                        <strong>LMT</strong>: Local Mean Time = STD + (λ_lokal − λ_meridian) × 4 menit/°. &nbsp;|&nbsp; 
+                        <strong>Waktu Daerah (WIB)</strong>: Waktu resmi zona (WIB/WITA/WIT/UTC±) <strong>(+ Ihtiyath)</strong>. &nbsp;|&nbsp; 
+                        <strong>LMT</strong>: Local Mean Time = Waktu Daerah + (λ_lokal − λ_meridian) × 4 menit/°. &nbsp;|&nbsp; 
                         <strong>WIS / Istiwa'</strong>: True Solar Time = LMT + EoT. Waktu berdasarkan posisi nyata matahari; saat transit selalu 12:00:00. <br><br>
                         <strong>Kriteria Sudut:</strong> Imsak: Subuh − 10 Menit · Subuh −20° · Syuruk/Maghrib −1° (termasuk refraksi &amp; semidiameter) · Dhuha +4.5° · Ashar: arctan(1/(1+tan|φ−δ|)) [Syafi'i, faktor=1] · Isya −18° — sesuai <em>KEMENAG RI</em>.
                     </div>
@@ -396,14 +411,14 @@
                                             <th colspan="3">Isya</th>
                                         </tr>
                                         <tr class="m-sub-head" id="monthly_sub_head">
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
-                                            <th>STD</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
+                                            <th>WIB</th><th>LMT</th><th>WIS</th>
                                         </tr>
                                     </thead>
                                     <tbody id="monthly_tbody"></tbody>
@@ -412,6 +427,8 @@
 
                             <div class="download-action-panel">
                                 <button class="btn-gps btn-download-excel" onclick="unduhJadwalExcel()" type="button" title="Unduh Jadwal Format Excel Modern (.xls)">📊 Unduh Excel (.xls)</button>
+                                
+                                <button class="btn-gps btn-download-pdf" onclick="unduhJadwalPDF()" type="button" title="Unduh Jadwal Format PDF">📄 Unduh PDF (.pdf)</button>
                             </div>
                         </div>
                     </div>
@@ -999,7 +1016,7 @@
             const JD = dayRes.JD;
 
             document.getElementById('th_prayer_std').innerHTML = `Waktu Daerah<span class="th-sub">${tzName}</span>`;
-            document.getElementById('prayer_legend').innerHTML = `<strong>Waktu Daerah (${tzName})</strong>: Waktu resmi zona (${tzName}/UTC±) <strong>(+ Ihtiyath)</strong>. &nbsp;|&nbsp; <strong>LMT</strong>: Local Mean Time = ${tzName} + (λ_lokal − λ_meridian) × 4 menit/°. &nbsp;|&nbsp; <strong>WIS / Istiwa'</strong>: True Solar Time = LMT + EoT. Waktu berdasarkan posisi nyata matahari; saat transit selalu 12:00:00. <br><br> <strong>Kriteria Sudut:</strong> Imsak: Subuh − 10 Menit · Subuh −20° · Syuruk/Maghrib −1° (termasuk refraksi &amp; semidiameter) · Dhuha +4.5° · Ashar: arctan(1/(1+tan|φ−δ|)) [Syafi'i, faktor=1] · Isya −18° — sesuai <em>KEMENAG RI</em>.`;
+            document.getElementById('prayer_legend').innerHTML = `<strong>Waktu Daerah (${tzName})</strong>: Waktu resmi zona (${tzName}/UTC±) <strong>(+ Ihtiyath)</strong>. &nbsp;|&nbsp; <strong>LMT</strong>: Local Mean Time = Waktu Daerah + (λ_lokal − λ_meridian) × 4 menit/°. &nbsp;|&nbsp; <strong>WIS / Istiwa'</strong>: True Solar Time = LMT + EoT. Waktu berdasarkan posisi nyata matahari; saat transit selalu 12:00:00. <br><br> <strong>Kriteria Sudut:</strong> Imsak: Subuh − 10 Menit · Subuh −20° · Syuruk/Maghrib −1° (termasuk refraksi &amp; semidiameter) · Dhuha +4.5° · Ashar: arctan(1/(1+tan|φ−δ|)) [Syafi'i, faktor=1] · Isya −18° — sesuai <em>KEMENAG RI</em>.`;
 
             let subHeadHtml = '';
             for (let i = 0; i < 8; i++) {
@@ -1021,24 +1038,6 @@
             const tbody = document.getElementById('prayer_tbody');
             tbody.innerHTML = '';
 
-            playerDefs: p => {
-                const t = prayers[p.id];
-                if (!t) {
-                    tbody.innerHTML += `<tr>
-                        <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
-                        <td colspan="3" style="text-align:center;color:var(--ink-muted);font-size:.8rem">Tidak dapat dihitung (kutub / matahari tidak terbit/tenggelam)</td>
-                    </tr>`;
-                } else {
-                    tbody.innerHTML += `<tr>
-                        <td><div class="td-prayer-name"><span class="prayer-dot ${p.dot}"></span> <div><div>${p.name}</div><div class="prayer-ar">${p.ar}</div></div></div></td>
-                        <td class="time-std">${hms(t.std)}</td>
-                        <td class="time-lmt">${hms(t.lmt)}</td>
-                        <td class="time-wis">${hms(t.wis)}</td>
-                    </tr>`;
-                }
-            };
-
-            // Fix for loop binding array safely
             prayerDefs.forEach(p => {
                 const t = prayers[p.id];
                 if (!t) {
@@ -1198,6 +1197,7 @@
             }, 50);
         }
 
+        // FUNGSI UNDUH EXCEL EKSISTING
         function unduhJadwalExcel() {
             if (!window.calculatedMonthlyData || window.calculatedMonthlyData.length === 0) {
                 alert('Silakan lakukan komputasi kalkulasi waktu sholat terlebih dahulu.');
@@ -1209,7 +1209,6 @@
             const [tahun, bulan] = dateInput.split('-').map(Number);
             const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             
-            // FUNGSI KOMPUTASI BULAN HIJRIYAH SECARA AKURAT UNTUK PERIODE EXCEL
             const dapatkanBulanDanTahunHijriyah = (tanggalObj) => {
                 try {
                     const namaBulanHijriyahUser = [
@@ -1235,7 +1234,6 @@
                 }
             };
 
-            // Hitung Hijriyah pada awal dan akhir bulan Masehi
             const hijriAwal = dapatkanBulanDanTahunHijriyah(new Date(tahun, bulan - 1, 1));
             const hijriAkhir = dapatkanBulanDanTahunHijriyah(new Date(tahun, bulan, 0));
             
@@ -1375,6 +1373,120 @@
                 link.click();
                 document.body.removeChild(link);
             }
+        }
+
+        // FUNGSI UNDUH PDF YANG DIPERBARUI DENGAN VARIABEL ZONA WAKTU DINAMIS
+        function unduhJadwalPDF() {
+            if (!window.calculatedMonthlyData || window.calculatedMonthlyData.length === 0) {
+                alert('Silakan lakukan perhitungan waktu sholat terlebih dahulu.');
+                return;
+            }
+
+            // Inisialisasi jsPDF mode Landscape untuk A4
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape', 'pt', 'a4');
+
+            // Ambil Meta Data
+            const tempat = document.getElementById('place_name').value || '—';
+            const dateInput = document.getElementById('tgl_input').value;
+            const [tahun, bulan] = dateInput.split('-').map(Number);
+            const namaBulanIndo = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+            const lintangTxt = document.getElementById('lat_dec').textContent;
+            const bujurTxt = document.getElementById('lon_dec').textContent;
+            const tzLabelTxt = document.getElementById('tz_label').textContent;
+
+            // Logika Pembacaan Zona Waktu Dinamis untuk PDF
+            const tzRaw = parseFloat(document.getElementById('tz_input').value);
+            let tzName = 'GMT';
+            if (tzRaw === 7) tzName = 'WIB';
+            else if (tzRaw === 8) tzName = 'WITA';
+            else if (tzRaw === 9) tzName = 'WIT';
+            else if (!isNaN(tzRaw)) tzName = `UTC${tzRaw >= 0 ? '+' : ''}${tzRaw}`;
+
+            // Render Header PDF
+            doc.setFontSize(16);
+            doc.setFont("helvetica", "bold");
+            doc.text("JADWAL WAKTU SHALAT BULANAN", 40, 40);
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "normal");
+            doc.text("Sistem Aplikasi Data Hisab Falak — Jadwal Komparasi Terintegrasi", 40, 55);
+
+            doc.setFontSize(9);
+            doc.text(`Lokasi Tempat    : ${tempat.toUpperCase()}`, 40, 75);
+            doc.text(`Koordinat Geograf: Lintang ${lintangTxt} | Bujur ${bujurTxt}`, 40, 88);
+            doc.text(`Periode Bulan    : ${namaBulanIndo[bulan-1]} ${tahun}`, 40, 101);
+            doc.text(`Format / Zona    : ${tzLabelTxt} (${tzName} / LMT / WIS)`, 40, 114);
+
+            // Persiapan Kolom dan Data Array untuk AutoTable (Mengganti STD dengan variabel tzName)
+            const head = [
+                [
+                    { content: 'No', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                    { content: 'Tanggal', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                    { content: 'Hari & Pasaran', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+                    { content: 'Imsak', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Subuh', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Syuruk', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Dhuha', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Dzuhur', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Ashar', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Maghrib', colSpan: 3, styles: { halign: 'center' } },
+                    { content: 'Isya', colSpan: 3, styles: { halign: 'center' } }
+                ],
+                [
+                    tzName, 'LMT', 'WIS', // Imsak
+                    tzName, 'LMT', 'WIS', // Subuh
+                    tzName, 'LMT', 'WIS', // Syuruk
+                    tzName, 'LMT', 'WIS', // Dhuha
+                    tzName, 'LMT', 'WIS', // Dzuhur
+                    tzName, 'LMT', 'WIS', // Ashar
+                    tzName, 'LMT', 'WIS', // Maghrib
+                    tzName, 'LMT', 'WIS'  // Isya
+                ]
+            ];
+
+            const body = window.calculatedMonthlyData.map(row => {
+                const makeCell = (obj) => obj ? [hms(obj.std), hms(obj.lmt), hms(obj.wis)] : ['—', '—', '—'];
+                return [
+                    row.no,
+                    row.tanggal,
+                    row.hariPasaran,
+                    ...makeCell(row.times.imsak),
+                    ...makeCell(row.times.subuh),
+                    ...makeCell(row.times.syuruk),
+                    ...makeCell(row.times.dhuha),
+                    ...makeCell(row.times.dzuhur),
+                    ...makeCell(row.times.ashar),
+                    ...makeCell(row.times.maghrib),
+                    ...makeCell(row.times.isya)
+                ];
+            });
+
+            // Eksekusi Pembuatan Tabel
+            doc.autoTable({
+                startY: 130,
+                head: head,
+                body: body,
+                theme: 'grid',
+                styles: { fontSize: 6.5, cellPadding: 2, halign: 'center', font: "helvetica" },
+                headStyles: { fillColor: [13, 33, 55], textColor: [255, 255, 255] },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                    2: { halign: 'left' } // Rata kiri untuk Hari Pasaran
+                },
+                margin: { top: 30, right: 30, bottom: 30, left: 30 }
+            });
+
+            // Tambahkan Catatan Footer Dinamis (Ihtiyath)
+            const finalY = doc.lastAutoTable.finalY || doc.autoTable.previous.finalY;
+            doc.setFont("helvetica", "italic");
+            doc.setFontSize(8);
+            doc.text(`* Waktu daerah (${tzName}) pada tabel di atas sudah memperhitungkan penambahan nilai pengaman waktu (Ihtiyath).`, 40, finalY + 15);
+
+            // Simpan Berkas PDF
+            const namaFileBersih = `Jadwal_PDF_${tempat.replace(/[^a-zA-Z0-9]/g, '_')}_${tahun}_${bulan}.pdf`;
+            doc.save(namaFileBersih);
         }
 
         (function init() {
